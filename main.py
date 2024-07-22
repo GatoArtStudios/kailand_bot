@@ -112,42 +112,47 @@ async def on_ready():
 # ? ------------------------------------ Evento de presencia ------------------------------------
 @bot.event
 async def on_presence_update(before: discord.Member, after: discord.Member):
-    if after.id in user_register and after.id in user_online:
+    if after.id in user_register and after.id in user_online and after.status != before.status:
 
         if after.status == discord.Status.online and before.status != discord.Status.online and after.status != before.status:
-            user_online[after.id] = {'estado': EstadosUsuario.EN_LINEA, 'name': after.display_name}
-            # TODO: Guardamos el usuario en la base de datos
-            with SQL() as db:
-                db.datetime(after.id, after.display_name, EstadosUsuario.EN_LINEA)
-            logging.info(f'Estado: {EstadosUsuario.EN_LINEA}, {after.display_name}, ({after.id})')
+            if user_online[after.id]['estado'] != EstadosUsuario.EN_LINEA:
+                user_online[after.id] = {'estado': EstadosUsuario.EN_LINEA, 'name': after.display_name}
+                # TODO: Guardamos el usuario en la base de datos
+                with SQL() as db:
+                    db.datetime(after.id, after.display_name, EstadosUsuario.EN_LINEA)
+                logging.info(f'Estado: {EstadosUsuario.EN_LINEA}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.dnd and before.status != discord.Status.dnd  and after.status != before.status:
-            user_online[after.id] = {'estado': EstadosUsuario.NO_MOLESTAR, 'name': after.display_name}
-            # TODO: Guardamos el usuario en la base de datos
-            with SQL() as db:
-                db.datetime(after.id, after.display_name, EstadosUsuario.NO_MOLESTAR)
-            logging.info(f'Estado: {EstadosUsuario.NO_MOLESTAR}, {after.display_name}, ({after.id})')
+            if user_online[after.id]['estado'] != EstadosUsuario.NO_MOLESTAR:
+                user_online[after.id] = {'estado': EstadosUsuario.NO_MOLESTAR, 'name': after.display_name}
+                # TODO: Guardamos el usuario en la base de datos
+                with SQL() as db:
+                    db.datetime(after.id, after.display_name, EstadosUsuario.NO_MOLESTAR)
+                logging.info(f'Estado: {EstadosUsuario.NO_MOLESTAR}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.idle and before.status != discord.Status.idle  and after.status != before.status:
-            user_online[after.id] = {'estado': EstadosUsuario.AUSENTE, 'name': after.display_name}
-            # TODO: Guardamos el usuario en la base de datos
-            with SQL() as db:
-                db.datetime(after.id, after.display_name, EstadosUsuario.AUSENTE)
-            logging.info(f'Estado: {EstadosUsuario.AUSENTE}, {after.display_name}, ({after.id})')
+            if user_online[after.id]['estado'] != EstadosUsuario.AUSENTE:
+                user_online[after.id] = {'estado': EstadosUsuario.AUSENTE, 'name': after.display_name}
+                # TODO: Guardamos el usuario en la base de datos
+                with SQL() as db:
+                    db.datetime(after.id, after.display_name, EstadosUsuario.AUSENTE)
+                logging.info(f'Estado: {EstadosUsuario.AUSENTE}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.invisible and before.status != discord.Status.invisible  and after.status != before.status:
-            user_online[after.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': after.display_name}
-            # TODO: Guardamos el usuario en la base de datos
-            with SQL() as db:
-                db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
-            logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
+            if user_online[after.id]['estado'] != EstadosUsuario.DESCONECTADO:
+                user_online[after.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': after.display_name}
+                # TODO: Guardamos el usuario en la base de datos
+                with SQL() as db:
+                    db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
+                logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.offline and before.status != discord.Status.offline  and after.status != before.status:
-            user_online[after.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': after.display_name}
-            # TODO: Guardamos el usuario en la base de datos
-            with SQL() as db:
-                db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
-            logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
+            if user_online[after.id]['estado'] != EstadosUsuario.DESCONECTADO:
+                user_online[after.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': after.display_name}
+                # TODO: Guardamos el usuario en la base de datos
+                with SQL() as db:
+                    db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
+                logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
 
 # ? ------------------------------------ Eventos de mensajes ------------------------------------
 
@@ -177,7 +182,16 @@ async def info(interaction: discord.Interaction):
 
 @bot.tree.command(name='estadisticas', description='Muestra las estadísticas del los usuarios registrados')
 async def update_state(interaction: discord.Interaction):
-    await interaction.response.send_message(f'El bot se llama {bot.user.name} y su ID es {bot.user.id}', ephemeral=True)
+    await interaction.response.send_message(f'recopilando estadisticas, por favor espere', ephemeral=True)
+    # TODO: Mostramos las estadísticas de los usuarios registrados
+    with SQL() as db:
+        stats = db.get_user_statistics()
+    #     print(stats)
+    # response = "# Estadísticas de tiempo en línea por día:\n"
+    # for row in stats:
+    #     horas = round(row[3])
+    #     response += f"- Usuario: {row[1]} ({row[0]}), Día: {row[2]}, Horas en línea: {horas}\n"
+    # await interaction.user.send(response)
 
 @bot.tree.command(name='insertar', description='Inserta un nuevo usuario a la base de datos.')
 @commands.has_permissions(administrator=True)
