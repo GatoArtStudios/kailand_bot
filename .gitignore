@@ -3,3 +3,4 @@ __pycache__/
 database.db 
 discord_bot.log
 test.py
+.vscode/
