@@ -1,0 +1,5 @@
+__pycache__/
+.env
+database.db 
+discord_bot.log
+test.py
