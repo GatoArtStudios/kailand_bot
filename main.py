@@ -241,7 +241,13 @@ async def consulta(interaction: discord.Interaction):
 @bot.tree.command(name='set_register', description='Envía el ui de registro para ingreso de jornada de trabajo.')
 @commands.has_permissions(administrator=True)
 async def set_register(interaction: discord.Interaction):
-    message = await interaction.channel.send('# Puedes registrar tu ingreso de jornada de trabajo. \n- Por favor presiona el botón para registrar tu ingreso a trabajar.', view=ui.REGISTER(user_online))
+    embed = discord.Embed(
+        title='Registro de Jornada Laboral.',
+        color=10181046,
+        description='¡Bienvenidos al sistema de registro de jornada laboral! Aquí podrás registrar tu tiempo de trabajo diario de manera rápida y sencilla. Es importante que cumplas con un mínimo de 2 horas de trabajo diarias, las cuales serán medidas a partir de tu estado en línea. El bot monitoreará tu actividad y calculará el tiempo que estés en línea, lo que determinará el tiempo total trabajado durante el día.\n\nPara comenzar tu jornada laboral, simplemente haz clic en el botón Registrar ingreso. Este botón marcará el inicio de tu trabajo. Cuando finalices tu jornada, no olvides hacer clic en el botón Registrar salida para que el bot registre el tiempo trabajado. Asegúrate de estar en línea durante el tiempo que deseas que se contabilice, ya que el bot solo cuenta el tiempo en el que apareces como conectado.'
+    )
+    message = await interaction.channel.send(embed=embed, view=ui.REGISTER(user_online))
+    await interaction.response.send_message('**Canal seteado correctamente.**')
     # TODO: Guardamos el registro del mensaje enviado en la base de datos
     with SQL() as db:
         db.insertar("INSERT INTO message VALUES (?, ?)", (message.id, interaction.channel.id))
@@ -323,10 +329,10 @@ if __name__ == '__main__':
             try:
                 logging.info("Estableciendo conexión...")
                 bot.run(config.TOKEN)
-                time.sleep(3)
             except (socket.gaierror, aiohttp.client_exceptions.ClientConnectorError, RuntimeError):
                 logging.error("Conexión cerrada por error de red.")
-                time.sleep(3)
+                bot.close()
+                break
             except KeyboardInterrupt:
                 logging.info("Cerrando...")
                 bot.close()
