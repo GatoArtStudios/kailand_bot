@@ -313,6 +313,11 @@ async def get_raw(interaction: discord.Interaction):
         await interaction.response.send_message(f'# Consulta fallida. \n- Discord no permite enviar mas de 2000 caracteres.\n- Cantidad de caracteres de tu consulta: `{len(json.dumps(user_register, ensure_ascii=False, indent=2))}`', ephemeral=True)
 
 
+# ? --------------------------- De eventos loops ---------------------------
+
+
+
+
 # ? --------------------------- Apartado de conexión del bot ---------------------------
 
 def check_internet_connection():
