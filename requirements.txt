@@ -1,0 +1,5 @@
+discord>=2.3.2
+pandas>=2.2.2
+aiohttp>=3.9.5
+ping3>=4.0.8
+python-dotenv>=1.0.1

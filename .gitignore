@@ -4,3 +4,4 @@ database.db
 discord_bot.log
 test.py
 .vscode/
+script.py

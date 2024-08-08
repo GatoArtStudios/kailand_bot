@@ -3,6 +3,7 @@ from typing import Union
 import types_utils
 from datetime import datetime
 import discord
+import pandas as pd
 from log import logging
 from config import PATH
 
@@ -80,3 +81,15 @@ class SQL:
         query = 'INSERT INTO del_message (server, channel, message, message_author, message_author_id, user_action, user_action_id, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         values = (ctx.guild.name, ctx.channel.name, ctx.content, ctx.author.name, ctx.author.id, user_action, user_action_id, timestamp)
         self.insertar(query, values)
+
+    def get_user_statistics(self):
+        query = 'SELECT * FROM datetime'
+        rows = self.consulta(query).fetchall()
+
+        def timestamp_to_datetime(timestamp):
+            return datetime.fromtimestamp(timestamp)
+
+        df = pd.DataFrame(rows, columns=['id', 'user_id', 'user_name', 'timestamp', 'estado'])
+        df['timestamp'] = df['timestamp'].apply(timestamp_to_datetime)
+        print(df)
+        # return rows
