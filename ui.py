@@ -4,6 +4,10 @@ import sql
 from config import PATH as path
 from types_utils import EstadosUsuario
 
+def CreateEmbed(title: str, description: str, color: int = 5763719):
+    embed = discord.Embed(title=title, description=description, color=color)
+    return embed
+
 class REGISTER(discord.ui.View):
     """
     Vista para el botón "Registrarse" que se muestra en el comando 'set_register'.
@@ -24,7 +28,8 @@ class REGISTER(discord.ui.View):
         now = datetime.now()
 
         if interaction.user.id in self.user_online and self.user_online[interaction.user.id]['estado'] == EstadosUsuario.EN_LINEA:
-            await interaction.response.send_message("Ya se encuentra registrada su entrada.", ephemeral=True)
+            embed = CreateEmbed(title='Ya se encuentra registrada su entrada.', description='**Nota:** Por favor no spawnes el boto, ya te encuentras registrado como usuario en linea.')
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
         if interaction.user.id not in self.user_online:
@@ -34,10 +39,20 @@ class REGISTER(discord.ui.View):
 
         # Formatear la fecha y hora actual
         current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
-        await interaction.response.send_message("Su ingreso ha sido registrado existosamente a el dia: " + current_time_str + "", ephemeral=True)
+        embed = discord.Embed(
+            title="Su ingreso ha sido registrado existosamente a el dia: " + current_time_str + "",
+            color=5763719,
+            description='**Nota:** Recuerda registrar tu salida de la jornada laboral'
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         with sql.SQL() as db:
             db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.EN_LINEA)
-        await interaction.user.send(f'## Ticket de registro de ingreso el dia {current_time_str}.\n\n- Si no ha sido usted, por favor ignore este mensaje.')
+        embed = discord.Embed(
+            title=f'Ticket de registro de ingreso el dia {current_time_str}',
+            color=5763719,
+            description='Si no ha sido usted, por favor ignore este mensaje.'
+        )
+        await interaction.user.send(embed=embed)
 
     @discord.ui.button(label='Registrar Salida', custom_id='register_out_button', style=discord.ButtonStyle.red)
     async def register_out_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -48,7 +63,8 @@ class REGISTER(discord.ui.View):
         now = datetime.now()
 
         if interaction.user.id in self.user_online and self.user_online[interaction.user.id]['estado'] == EstadosUsuario.DESCONECTADO:
-            await interaction.response.send_message("Ya se encuentra registrada su salida.", ephemeral=True)
+            embed = CreateEmbed('Registro Exitoso', 'Ya se encuentra registrada su salida.')
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
         if interaction.user.id not in self.user_online:
@@ -58,7 +74,9 @@ class REGISTER(discord.ui.View):
 
         # Formatear la fecha y hora actual
         current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
-        await interaction.response.send_message("Su salida ha sido registrada existosamente a el dia: " + current_time_str + "", ephemeral=True)
+        em = CreateEmbed(title='Su salida ha sido registrada existosamente a el dia:' + current_time_str, description='Ten un grandioso dia.', color=15105570)
+        await interaction.response.send_message(embed=em, ephemeral=True)
         with sql.SQL() as db:
             db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
-        await interaction.user.send(f'## Ticket de registro de salida el dia {current_time_str}.\n\n- Si no ha sido usted, por favor ignore este mensaje.')
+        em = CreateEmbed(f'Ticket de registro de salida el dia {current_time_str}.', color=15105570, description='Si no ha sido usted, por favor ignore este mensaje.')
+        await interaction.user.send(embed=em)
