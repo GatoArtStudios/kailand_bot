@@ -326,8 +326,10 @@ if __name__ == '__main__':
                 time.sleep(3)
             except (socket.gaierror, aiohttp.client_exceptions.ClientConnectorError, RuntimeError):
                 logging.error("Conexión cerrada por error de red.")
+                time.sleep(3)
             except KeyboardInterrupt:
                 logging.info("Cerrando...")
+                bot.close()
                 break
         else:
             print('No internet connection. Retrying in 10 seconds...')
