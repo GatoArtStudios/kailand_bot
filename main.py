@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from discord.ui import View, Select, Button
 import logging
 import ping3
 import time
@@ -12,20 +13,21 @@ import ui
 from  sql import SQL
 import utils
 import config
-from types_utils import EstadosUsuario, ConverStatus
+from types_utils import EstadosUsuario, ConverStatus, ColorDiscord
 from log import logging
 
 # ? ------------------------------------ Configuracion de la base de datos ------------------------------------
 
+db = SQL()
+
 # TODO: Crea tablas en la base de datos
-with SQL() as db:
-    db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT, time INTEGER)")
-    db.run("CREATE TABLE IF NOT EXISTS user_activity (date INTEGER PRIMARY KEY, id INTEGER, time INTEGER, name TEXT)")
-    db.run("CREATE TABLE IF NOT EXISTS message (id INTEGER PRIMARY KEY, channel INTEGER)")
-    db.run("CREATE TABLE IF NOT EXISTS roles (id_rol INTEGER PRIMARY KEY, rol_name TEXT, id_server INTEGER, server_name TEXT)")
-    db.run("CREATE TABLE IF NOT EXISTS datetime (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, user_name TEXT, timestamp INTEGER, estado TEXT)")
-    db.run("CREATE TABLE IF NOT EXISTS del_message (id INTEGER PRIMARY KEY AUTOINCREMENT, server TEXT, channel TEXT, message TEXT, message_author TEXT, message_author_id INTEGER, user_action TEXT, user_action_id INTEGER, timestamp INTEGER)")
-    data = db.consulta("SELECT * FROM users").fetchall()
+db.run("CREATE TABLE IF NOT EXISTS users (id BIGINT PRIMARY KEY, name VARCHAR(255), time BIGINT)")
+db.run("CREATE TABLE IF NOT EXISTS message (id BIGINT PRIMARY KEY, channel BIGINT)")
+db.run('CREATE TABLE IF NOT EXISTS channel (id BIGINT PRIMARY KEY, name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))')
+db.run("CREATE TABLE IF NOT EXISTS roles (id_rol BIGINT PRIMARY KEY, rol_name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))")
+db.run("CREATE TABLE IF NOT EXISTS datetime (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, user_name VARCHAR(255), timestamp BIGINT, estado VARCHAR(255))")
+db.run("CREATE TABLE IF NOT EXISTS del_message (id BIGINT AUTO_INCREMENT PRIMARY KEY, server VARCHAR(255), channel VARCHAR(255), message VARCHAR(255), message_author VARCHAR(255), message_author_id BIGINT, user_action VARCHAR(255), user_action_id BIGINT, timestamp BIGINT)")
+data = db.consulta("SELECT * FROM users").fetchall()
 
 
 # ? ------------------------------------ Variables ------------------------------------
@@ -60,8 +62,7 @@ async def on_ready():
     # ? ------------------------------------ Buscamos y editamos el mensaje que se encarga de registrar el ingreso ------------------------------------
     try:
         # TODO: Consultamos todos los mensajes de la base de datos
-        with SQL() as db:
-            message = db.consulta("SELECT * FROM message").fetchall()
+        message = db.consulta("SELECT * FROM message").fetchall()
         if len(message) > 0: # Verificamos si hay mensajes guardados
             logging.info(f'Editando el mensaje de registro con iD: {message[0][0]}')
             for i in message: # Iteramos los mensajes
@@ -70,14 +71,13 @@ async def on_ready():
                     try:
                         message = await channel.fetch_message(i[0]) # Obtenemos el mensaje del canal con el id del mensaje
                         if message: # Verificamos si el mensaje existe
-                            view = ui.REGISTER(user_online)
+                            view = ui.REGISTER(user_online, db)
                             await message.edit(view=view) # Editamos el mensaje, esto nos permitirá seguir interactuando con el botón.
                     except Exception as e:
                         pass
         # ? ------------------------------------ Buscamos los usuarios a monitoria la actividad ------------------------------------
         # TODO: Consultamos todos los roles de la base de datos
-        with SQL() as db:
-            server = db.consulta("SELECT * FROM roles").fetchall()
+        server = db.consulta("SELECT * FROM roles").fetchall()
         if len(server) > 0: # Verificamos si hay roles guardados
             for i in server: # Iteramos los roles
                 # print(i)
@@ -97,8 +97,7 @@ async def on_ready():
                                 else:
                                     user_register[user_id].update({'estado': ConverStatus(status), 'name': user_name})
                                 # TODO: Guardamos el usuario en la base de datos
-                                with SQL() as db:
-                                    db.insertar("INSERT INTO users VALUES (?, ?, ?)", (user_id, user_name, 0))
+                                db.insertar("INSERT INTO users (id, name, time) VALUES (%s, %s, %s)", (user_id, user_name, 0))
                             else:
                                 continue
     # ? ------------------------------------ Sincronizamos comandos y actualizamos el estado del bot ------------------------------------
@@ -118,40 +117,35 @@ async def on_presence_update(before: discord.Member, after: discord.Member):
             if user_online[after.id]['estado'] != EstadosUsuario.EN_LINEA:
                 user_online[after.id] = {'estado': EstadosUsuario.EN_LINEA, 'name': after.display_name}
                 # TODO: Guardamos el usuario en la base de datos
-                with SQL() as db:
-                    db.datetime(after.id, after.display_name, EstadosUsuario.EN_LINEA)
+                db.datetime(after.id, after.display_name, EstadosUsuario.EN_LINEA)
                 logging.info(f'Estado: {EstadosUsuario.EN_LINEA}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.dnd and before.status != discord.Status.dnd  and after.status != before.status:
             if user_online[after.id]['estado'] != EstadosUsuario.NO_MOLESTAR:
                 user_online[after.id] = {'estado': EstadosUsuario.NO_MOLESTAR, 'name': after.display_name}
                 # TODO: Guardamos el usuario en la base de datos
-                with SQL() as db:
-                    db.datetime(after.id, after.display_name, EstadosUsuario.NO_MOLESTAR)
+                db.datetime(after.id, after.display_name, EstadosUsuario.NO_MOLESTAR)
                 logging.info(f'Estado: {EstadosUsuario.NO_MOLESTAR}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.idle and before.status != discord.Status.idle  and after.status != before.status:
             if user_online[after.id]['estado'] != EstadosUsuario.AUSENTE:
                 user_online[after.id] = {'estado': EstadosUsuario.AUSENTE, 'name': after.display_name}
                 # TODO: Guardamos el usuario en la base de datos
-                with SQL() as db:
-                    db.datetime(after.id, after.display_name, EstadosUsuario.AUSENTE)
+                db.datetime(after.id, after.display_name, EstadosUsuario.AUSENTE)
                 logging.info(f'Estado: {EstadosUsuario.AUSENTE}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.invisible and before.status != discord.Status.invisible  and after.status != before.status:
             if user_online[after.id]['estado'] != EstadosUsuario.DESCONECTADO:
                 user_online[after.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': after.display_name}
                 # TODO: Guardamos el usuario en la base de datos
-                with SQL() as db:
-                    db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
+                db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
                 logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
 
         elif after.status == discord.Status.offline and before.status != discord.Status.offline  and after.status != before.status:
             if user_online[after.id]['estado'] != EstadosUsuario.DESCONECTADO:
                 user_online[after.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': after.display_name}
                 # TODO: Guardamos el usuario en la base de datos
-                with SQL() as db:
-                    db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
+                db.datetime(after.id, after.display_name, EstadosUsuario.DESCONECTADO)
                 logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
 
 # ? ------------------------------------ Eventos de mensajes ------------------------------------
@@ -168,8 +162,7 @@ async def on_message_delete(message: discord.Message):
         if entry.target.id == message.author.id:
             print(f'Mensaje eliminado por: {entry.user.display_name}, ID: {entry.user.id}')
             # TODO: Guardamos el registro del mensaje eliminado en la base de datos
-            with SQL() as db:
-                db.del_message(message, entry.user.display_name, entry.user.id)
+            db.del_message(message, entry.user.display_name, entry.user.id)
             break
 
 
@@ -184,8 +177,7 @@ async def info(interaction: discord.Interaction):
 async def update_state(interaction: discord.Interaction):
     await interaction.response.send_message(f'recopilando estadisticas, por favor espere', ephemeral=True)
     # TODO: Mostramos las estadísticas de los usuarios registrados
-    with SQL() as db:
-        stats = db.get_user_statistics()
+    stats = db.get_user_statistics()
     #     print(stats)
     # response = "# Estadísticas de tiempo en línea por día:\n"
     # for row in stats:
@@ -197,8 +189,7 @@ async def update_state(interaction: discord.Interaction):
 @commands.has_permissions(administrator=True)
 async def insertar(interaction: discord.Interaction, usuario: discord.Member):
     # TODO: Guardamos en la base de datos el usuario elegido por el comando
-    with SQL() as db:
-        insert = db.insertar("INSERT INTO users VALUES (?, ?, ?)", (usuario.id, usuario.display_name, 0))
+    insert = db.insertar("INSERT INTO users (id, name, time) VALUES (%s, %s, %s)", (usuario.id, usuario.display_name, 0))
     if insert:
         await interaction.response.send_message(f'# Registro exitoso. \nInsertado {usuario.display_name} ({usuario.id})', ephemeral=True)
     else:
@@ -208,8 +199,7 @@ async def insertar(interaction: discord.Interaction, usuario: discord.Member):
 @commands.has_permissions(administrator=True)
 async def borrar(interaction: discord.Interaction, usuario: discord.Member):
     # TODO: Eliminamos un usuario elegido de la base de datos
-    with SQL() as db:
-        del_user = db.insertar("DELETE FROM users WHERE id = ?", (usuario.id,))
+    del_user = db.insertar("DELETE FROM users WHERE id = %s", (usuario.id,))
     if del_user:
         await interaction.response.send_message(f'# Usuario borrado. \nBorrado {usuario.display_name} ({usuario.id})', ephemeral=True)
     else:
@@ -219,8 +209,7 @@ async def borrar(interaction: discord.Interaction, usuario: discord.Member):
 @commands.has_permissions(administrator=True)
 async def consulta(interaction: discord.Interaction):
     # TODO: Obtenemos todos los usuarios registrados en la base de datos
-    with SQL() as db:
-        data = db.consulta("SELECT * FROM users").fetchall()
+    data = db.consulta("SELECT * FROM users").fetchall()
     if len(data) == 0:
         await interaction.response.send_message(
             f'# No hay usuarios registrados.\n- Por favor inserte un usuario.\n**Nota:** Puedes usar el comando `/insertar` + Nombre de usuario, para agregar nuevos usuarios',
@@ -246,11 +235,10 @@ async def set_register(interaction: discord.Interaction):
         color=10181046,
         description='¡Bienvenidos al sistema de registro de jornada laboral! Aquí podrás registrar tu tiempo de trabajo diario de manera rápida y sencilla. Es importante que cumplas con un mínimo de 2 horas de trabajo diarias, las cuales serán medidas a partir de tu estado en línea. El bot monitoreará tu actividad y calculará el tiempo que estés en línea, lo que determinará el tiempo total trabajado durante el día.\n\nPara comenzar tu jornada laboral, simplemente haz clic en el botón Registrar ingreso. Este botón marcará el inicio de tu trabajo. Cuando finalices tu jornada, no olvides hacer clic en el botón Registrar salida para que el bot registre el tiempo trabajado. Asegúrate de estar en línea durante el tiempo que deseas que se contabilice, ya que el bot solo cuenta el tiempo en el que apareces como conectado.'
     )
-    message = await interaction.channel.send(embed=embed, view=ui.REGISTER(user_online))
+    message = await interaction.channel.send(embed=embed, view=ui.REGISTER(user_online, db))
     await interaction.response.send_message('**Canal seteado correctamente.**', ephemeral=True)
     # TODO: Guardamos el registro del mensaje enviado en la base de datos
-    with SQL() as db:
-        db.insertar("INSERT INTO message VALUES (?, ?)", (message.id, interaction.channel.id))
+    db.insertar("INSERT INTO message (id, channel) VALUES (%s, %s)", (message.id, interaction.channel.id))
 
 
 @bot.tree.command(name='set_rol', description='Setea el Rol donde se registran los usuarios.')
@@ -262,18 +250,18 @@ async def set_server(interaction: discord.Interaction, rol: str):
     try:
         role_obj = await utils.transform(interaction, rol)
         # TODO: Guardamos el rol seteado
-        with SQL() as db:
-            db.insertar("INSERT INTO roles VALUES (?, ?, ?, ?)", (role_obj.id, role_obj.name, server.id, server.name))
+        db.insertar("INSERT INTO roles (id_rol, rol_name, id_server, server_name) VALUES (%s, %s, %s, %s)", (role_obj.id, role_obj.name, server.id, server.name))
         role = discord.utils.get(server.roles, id=role_obj.id) # Obtenemos el rol con el id
         if role: # Verificamos si el rol existe
             for menber in role.members: # Iteramos los miembros del rol
                 user_register[menber.id] = {'estado': ConverStatus(menber.status), 'name': menber.display_name}
                 # TODO: Guardamos el los usuarios elegidos para el rol elegido
-                with SQL() as db:
-                    db.insertar("INSERT INTO users VALUES (?, ?, ?)", (menber.id, menber.display_name, 0))
-        await interaction.response.send_message(f'# Se seteo el rol {role_obj.name} para {server.name} ({server.id})', ephemeral=True)
+                db.insertar("INSERT INTO users (id, name, time) VALUES (%s, %s, %s)", (menber.id, menber.display_name, 0))
+        em = ui.CreateEmbed('Seteo del rol Exitos', f'Se seteo el rol {role_obj.name} para {server.name} ({server.id})', color=ColorDiscord.GREEN.value)
+        await interaction.response.send_message(embed=em, ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f'# Error al setear el rol. \n{e}', ephemeral=True)
+        em = ui.CreateEmbed('Seteo del rol Fallido', f'No se pudo setear el rol {rol} para {server.name} ({server.id})', color=ColorDiscord.RED.value)
+        await interaction.response.send_message(embed=em, ephemeral=True)
 
 
 @bot.tree.command(name='del_rol', description='Elimina el Rol donde se registran los usuarios.')
@@ -283,8 +271,7 @@ async def del_rol(interaction: discord.Interaction, rol: str):
     server = interaction.guild
     try:
         # TODO: Eliminamos el rol seleccionado en el comando.
-        with SQL() as db:
-            result = db.insertar("DELETE FROM roles WHERE id_rol = ?", (int(rol),))
+        result = db.insertar("DELETE FROM roles WHERE id_rol = %s", (int(rol),))
         if result:
             await interaction.response.send_message(f'# Se elimino el rol {rol} para {server.name} ({server.id})', ephemeral=True)
         else:
@@ -297,8 +284,7 @@ async def del_rol(interaction: discord.Interaction, rol: str):
 @commands.has_permissions(administrator=True)
 async def get_roles(interaction: discord.Interaction):
     # TODO: Consultamos los roles de la base de datos.
-    with SQL() as db:
-        data = db.consulta("SELECT * FROM roles").fetchall()
+    data = db.consulta("SELECT * FROM roles").fetchall()
     respon = ''
     for i in data:
         respon += f'- Rol: {i[1]}, ID: {i[0]}, Servidor: {i[3]}\n'
@@ -312,6 +298,14 @@ async def get_raw(interaction: discord.Interaction):
     else:
         await interaction.response.send_message(f'# Consulta fallida. \n- Discord no permite enviar mas de 2000 caracteres.\n- Cantidad de caracteres de tu consulta: `{len(json.dumps(user_register, ensure_ascii=False, indent=2))}`', ephemeral=True)
 
+
+# ? --------------------------- Sistema de tickets ---------------------------
+
+@bot.tree.command(name='set_ticket', description='Setea el canal de tickets.')
+@commands.has_permissions(administrator=True)
+async def set_ticket(interaction: discord.Interaction, canal: discord.TextChannel):
+    embed = ui.CreateEmbed('Tickets', 'Aca puedes solicitar soporte para ayudar o reportar algun problema con **kailand**, la respuesta a tu ticket no sera de forma inmediata.\n\n> Solo puedes tener un ticket abierto por usuario.\n> ***Por favor, selecciona el tipo de soporte que necesitas:***', color=ColorDiscord.PURPLE.value)
+    
 
 # ? --------------------------- De eventos loops ---------------------------
 

@@ -12,11 +12,12 @@ class REGISTER(discord.ui.View):
     """
     Vista para el botón "Registrarse" que se muestra en el comando 'set_register'.
     """
-    def __init__(self, user_online):
+    def __init__(self, user_online, db: sql.SQL):
         """
         Constructor de la clase.
         """
         super().__init__()
+        self.db = db
         self.user_online = user_online
 
     @discord.ui.button(label="Registrar Ingreso", custom_id="register_button", style=discord.ButtonStyle.green)
@@ -45,8 +46,7 @@ class REGISTER(discord.ui.View):
             description='**Nota:** Recuerda registrar tu salida de la jornada laboral'
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        with sql.SQL() as db:
-            db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.EN_LINEA)
+        self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.EN_LINEA)
         embed = discord.Embed(
             title=f'Ticket de registro de ingreso el dia {current_time_str}',
             color=5763719,
@@ -76,7 +76,6 @@ class REGISTER(discord.ui.View):
         current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
         em = CreateEmbed(title='Su salida ha sido registrada existosamente a el dia:' + current_time_str, description='Ten un grandioso dia.', color=15105570)
         await interaction.response.send_message(embed=em, ephemeral=True)
-        with sql.SQL() as db:
-            db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
+        self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
         em = CreateEmbed(f'Ticket de registro de salida el dia {current_time_str}.', color=15105570, description='Si no ha sido usted, por favor ignore este mensaje.')
         await interaction.user.send(embed=em)
