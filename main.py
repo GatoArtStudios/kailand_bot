@@ -34,6 +34,7 @@ data = db.consulta("SELECT * FROM users").fetchall()
 
 user_online = {}
 user_register = {}
+TICKET_CATEGORY_ID = 1196886668519677952
 
 
 # ? -------------------------------------- Configuracion de Discord --------------------------------------
@@ -298,14 +299,85 @@ async def get_raw(interaction: discord.Interaction):
     else:
         await interaction.response.send_message(f'# Consulta fallida. \n- Discord no permite enviar mas de 2000 caracteres.\n- Cantidad de caracteres de tu consulta: `{len(json.dumps(user_register, ensure_ascii=False, indent=2))}`', ephemeral=True)
 
+@bot.tree.command(name='del_channel', description='Elimina el canal.')
+@commands.has_permissions(administrator=True)
+async def del_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    try:
+        await channel.delete()
+        await interaction.response.send_message(f'# Se elimino el canal {channel.name} ({channel.id})', ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f'# Error al eliminar el canal. \n{channel.name}', ephemeral=True)
+
 
 # ? --------------------------- Sistema de tickets ---------------------------
 
 @bot.tree.command(name='set_ticket', description='Setea el canal de tickets.')
 @commands.has_permissions(administrator=True)
-async def set_ticket(interaction: discord.Interaction, canal: discord.TextChannel):
-    embed = ui.CreateEmbed('Tickets', 'Aca puedes solicitar soporte para ayudar o reportar algun problema con **kailand**, la respuesta a tu ticket no sera de forma inmediata.\n\n> Solo puedes tener un ticket abierto por usuario.\n> ***Por favor, selecciona el tipo de soporte que necesitas:***', color=ColorDiscord.PURPLE.value)
+# async def set_ticket(interaction: discord.Interaction, canal: discord.TextChannel):
+async def set_ticket(interaction: discord.Interaction):
+    embed = ui.CreateEmbed('Tickets', 'Aca puedes solicitar soporte para ayudar o reportar algun problema con **kailand**, la respuesta a tu ticket no sera de forma inmediata.\n\n> Solo puedes tener un ticket abierto por usuario.\n\n***Por favor, selecciona el tipo de soporte que necesitas:***', color=ColorDiscord.PURPLE.value)
+    embed.set_thumbnail(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/Banner_Tickets.png')
+    # embed.set_footer(text='Creado por GatoArtStudios', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/Banner_Tickets.png')
+    embed.set_image(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/Banner_Tickets.png')
+    options = [
+        discord.SelectOption(label="Soporte Minecraft", description="Ayuda con problemas con el servidor de minecraft.", emoji="🛠️"),
+        discord.SelectOption(label="Soporte Discord", description="Ayuda con problemas con el servidor de discord.", emoji="💬"),
+        discord.SelectOption(label="Soporte Launcher", description="Ayuda con problemas con el launcher.", emoji="🖥️"),
+        discord.SelectOption(label="Soporte Técnico", description="Ayuda con problemas técnicos.", emoji="👨‍💻"),
+        discord.SelectOption(label="Consultas Generales", description="Resuelve tus dudas.", emoji="❓"),
+        discord.SelectOption(label="Reporte de Bugs", description="Informa sobre un error.", emoji="🐛"),
+    ]
+    select = Select(
+        placeholder='Elige el tipo de soporte que necesitas',
+        options=options,
+        custom_id='select',
+        min_values=1,
+        max_values=1
+    )
+
+    async def select_callback(interaction: discord.Interaction):
+        tipo_soporte = select.values[0].replace('Soporte ', '').replace('Consultas Generales', 'General').replace('Reporte de Bugs', 'Bugs')
+        user = interaction.user
+        guild = interaction.guild
+
+        # Creamos el canal para el ticket
+        category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
+        channel_name = f'{tipo_soporte}-{user.display_name}'.replace(' ', '-').lower()
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True)
+        }
+        ticket_channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
+
+        await interaction.response.send_message(f'Ticket creado en {ticket_channel.mention}.', ephemeral=True)
+
+        embed_ticket = ui.CreateEmbed(
+            f'Ticket de {tipo_soporte}',
+            f'Bienvenido, {user.mention}.\nUn miembro del equipo de soporte te atenderá lo más rápido que puedan en el canal de tickets que acabas de crear.',
+            color=ColorDiscord.GREEN.value
+        )
+        close_buttom = Button(
+            label='Cerra el ticket',
+            emoji='🔒',
+            custom_id='close_ticket',
+            style=discord.ButtonStyle.red
+        )
+        async def close_buttom_callback(interaction: discord.Interaction):
+            await ticket_channel.delete()
+            await interaction.response.send_message('Ticket cerrado.', ephemeral=True)
+        
+        close_buttom.callback = close_buttom_callback
+        
+        view = View()
+        view.add_item(close_buttom)
+        
+        await ticket_channel.send(f'{user.mention}' ,embed=embed_ticket, view=view)
     
+    select.callback = select_callback
+    view = View()
+    view.add_item(select)
+    await interaction.response.send_message(embed=embed, view=view)
 
 # ? --------------------------- De eventos loops ---------------------------
 
