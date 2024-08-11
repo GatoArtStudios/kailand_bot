@@ -13,6 +13,7 @@ import ui
 from  sql import SQL
 import utils
 import config
+from config import user_ticket
 from types_utils import EstadosUsuario, ConverStatus, ColorDiscord
 from log import logging
 
@@ -23,7 +24,7 @@ db = SQL()
 # TODO: Crea tablas en la base de datos
 db.run("CREATE TABLE IF NOT EXISTS users (id BIGINT PRIMARY KEY, name VARCHAR(255), time BIGINT)")
 db.run("CREATE TABLE IF NOT EXISTS ticket_message (message_id BIGINT PRIMARY KEY, channel_id BIGINT)")
-db.run("CREATE TABLE IF NOT EXISTS ticket_messages (message_id BIGINT PRIMARY KEY, channel_id BIGINT)")
+db.run("CREATE TABLE IF NOT EXISTS ticket_messages (message_id BIGINT PRIMARY KEY, channel_id BIGINT, author_id BIGINT)")
 db.run('CREATE TABLE IF NOT EXISTS channel (id BIGINT PRIMARY KEY, name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))')
 db.run("CREATE TABLE IF NOT EXISTS roles (id_rol BIGINT PRIMARY KEY, rol_name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))")
 db.run("CREATE TABLE IF NOT EXISTS datetime (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, user_name VARCHAR(255), timestamp BIGINT, estado VARCHAR(255))")
@@ -84,11 +85,12 @@ async def on_ready():
         if len(ticket_messages) > 0: # Verificamos si hay tickets guardados
             logging.info(f'Editando el ticket de registro con iD: {ticket_messages[0][0]}')
             for i in ticket_messages: # Iteramos los tickets
-                channel_id, message_id = i[1], i[0]
+                channel_id, message_id, author_id = i[1], i[0], i[2]
                 channel = bot.get_channel(channel_id) # Obtenemos el canal con el id
                 if channel: # Verificamos si el canal existe
                     try:
                         message = await channel.fetch_message(message_id) # Obtenemos el mensaje del canal con el id del mensaje
+                        user_ticket[channel_id] = author_id # Guardamos el id del autor del ticket por el id del canal
                         if message: # Verificamos si el mensaje existe
                             view = ui.TicketCloseView()
                             await message.edit(view=view) # Editamos el mensaje, esto nos permitira seguir interactuando con el botón.
@@ -205,12 +207,19 @@ async def on_message_delete(message: discord.Message):
 # ? -------------------------------------- Definición de comandos --------------------------------------
 
 @bot.tree.command(name='info', description='Ver información del bot')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def info(interaction: discord.Interaction):
+    # Verificar si el usuario tiene permisos de administrador o gestionar servidor
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     await interaction.response.send_message(f'El bot se llama {bot.user.name} y su ID es {bot.user.id}', ephemeral=True)
 
 @bot.tree.command(name='estadisticas', description='Muestra las estadísticas del los usuarios registrados')
 async def update_state(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     await interaction.response.send_message(f'recopilando estadisticas, por favor espere', ephemeral=True)
     # TODO: Mostramos las estadísticas de los usuarios registrados
     stats = db.get_user_statistics()
@@ -222,8 +231,11 @@ async def update_state(interaction: discord.Interaction):
     # await interaction.user.send(response)
 
 @bot.tree.command(name='insertar', description='Inserta un nuevo usuario a la base de datos.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def insertar(interaction: discord.Interaction, usuario: discord.Member):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     # TODO: Guardamos en la base de datos el usuario elegido por el comando
     insert = db.insertar("INSERT INTO users (id, name, time) VALUES (%s, %s, %s)", (usuario.id, usuario.display_name, 0))
     if insert:
@@ -232,8 +244,11 @@ async def insertar(interaction: discord.Interaction, usuario: discord.Member):
         await interaction.response.send_message(f'# Registro fallido. \nNo se inserto {usuario.display_name} ({usuario.id}), el usuario puede estar ya registrado.', ephemeral=True)
 
 @bot.tree.command(name='borrar', description='Borra un usuario de la base de datos')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def borrar(interaction: discord.Interaction, usuario: discord.Member):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     # TODO: Eliminamos un usuario elegido de la base de datos
     del_user = db.insertar("DELETE FROM users WHERE id = %s", (usuario.id,))
     if del_user:
@@ -242,8 +257,11 @@ async def borrar(interaction: discord.Interaction, usuario: discord.Member):
         await interaction.response.send_message(f'# Error al eliminar. \nNo se borro {usuario.display_name} ({usuario.id}), el usuario no existe.', ephemeral=True)
 
 @bot.tree.command(name='get_users', description='Muestra los usuarios de la base de datos.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def consulta(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     # TODO: Obtenemos todos los usuarios registrados en la base de datos
     data = db.consulta("SELECT * FROM users").fetchall()
     if len(data) == 0:
@@ -264,8 +282,11 @@ async def consulta(interaction: discord.Interaction):
                 await interaction.user.send(f'{respon[1900:3800]}')
 
 @bot.tree.command(name='set_register', description='Envía el ui de registro para ingreso de jornada de trabajo.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def set_register(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     embed = discord.Embed(
         title='Registro de Jornada Laboral.',
         color=10181046,
@@ -278,10 +299,13 @@ async def set_register(interaction: discord.Interaction):
 
 
 @bot.tree.command(name='set_rol', description='Setea el Rol donde se registran los usuarios.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 @app_commands.describe(rol='Rol para registrar el usuario')
 @app_commands.autocomplete(rol=utils.autocomplete_roles)
 async def set_server(interaction: discord.Interaction, rol: str):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     server = interaction.guild
     try:
         role_obj = await utils.transform(interaction, rol)
@@ -301,9 +325,12 @@ async def set_server(interaction: discord.Interaction, rol: str):
 
 
 @bot.tree.command(name='del_rol', description='Elimina el Rol donde se registran los usuarios.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 @app_commands.describe(rol='Debes colocar solo el ID del rol a eliminar')
 async def del_rol(interaction: discord.Interaction, rol: str):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     server = interaction.guild
     try:
         # TODO: Eliminamos el rol seleccionado en el comando.
@@ -317,8 +344,11 @@ async def del_rol(interaction: discord.Interaction, rol: str):
 
 
 @bot.tree.command(name='get_roles', description='Obtiene la lista de roles registrados.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def get_roles(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     # TODO: Consultamos los roles de la base de datos.
     data = db.consulta("SELECT * FROM roles").fetchall()
     respon = ''
@@ -327,16 +357,22 @@ async def get_roles(interaction: discord.Interaction):
     await interaction.response.send_message(f'# Consulta exitosa. \n{respon}', ephemeral=True)
 
 @bot.tree.command(name='get_raw', description='Muestra los datos en raw de los usuarios registrados.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def get_raw(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     if len(json.dumps(user_register, ensure_ascii=False, indent=2)) <= 1900:
         await interaction.response.send_message(f'# Consulta exitosa. \n```json\n{user_register}```', ephemeral=True)
     else:
         await interaction.response.send_message(f'# Consulta fallida. \n- Discord no permite enviar mas de 2000 caracteres.\n- Cantidad de caracteres de tu consulta: `{len(json.dumps(user_register, ensure_ascii=False, indent=2))}`', ephemeral=True)
 
 @bot.tree.command(name='del_channel', description='Elimina el canal.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def del_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     try:
         await channel.delete()
         await interaction.response.send_message(f'# Se elimino el canal {channel.name} ({channel.id})', ephemeral=True)
@@ -347,8 +383,11 @@ async def del_channel(interaction: discord.Interaction, channel: discord.TextCha
 # ? --------------------------- Sistema de tickets ---------------------------
 
 @bot.tree.command(name='set_ticket', description='Setea el canal de tickets.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
 async def set_ticket(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     channel = interaction.channel
     embed = ui.CreateEmbed('Tickets', 'Aca puedes solicitar soporte para ayudar o reportar algun problema con **kailand**, la respuesta a tu ticket no sera de forma inmediata.\n\n> Solo puedes tener un ticket abierto por usuario.\n\n***Por favor, selecciona el tipo de soporte que necesitas:***', color=ColorDiscord.PURPLE.value)
     embed.set_thumbnail(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
@@ -361,21 +400,45 @@ async def set_ticket(interaction: discord.Interaction):
     db.insertar('INSERT INTO ticket_message (message_id, channel_id) VALUES (%s, %s)', (message.id, channel.id))
 
 @bot.tree.command(name='ticket_priv', description='Vuelve el ticket privado.')
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(administrator=True, manage_guild=True)
+@commands.has_permissions(manage_channels=True)
 async def ticket_priv(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     channel = interaction.channel
+    print(f'Canal Actual: {channel.id}, Usuarios de ticket: {user_ticket}')
+    try:
+        user_id = user_ticket[channel.id] # ID del usuario que abrio el ticket
+        user = discord.utils.get(interaction.guild.members, id=user_id)
+    except Exception as e:
+        await interaction.response.send_message('Error al obtener el usuario autor del ticket.', ephemeral=True)
+        return
     # Mueve el ticket a categoria privada
     target_category = discord.utils.get(interaction.guild.categories, id=1271989776114782238)
+    guild = interaction.guild
+    overwrites = {
+        discord.utils.get(guild.roles, id=1154950225505550417): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a helpers
+        discord.utils.get(guild.roles, id=1105643863584014508): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a moderadores
+        discord.utils.get(guild.roles, id=1078126338638094366): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a tecnicos
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        guild.me: discord.PermissionOverwrite(read_messages=True)
+    }
     if not target_category:
         await interaction.response.send_message('No se encontro la categoria privada.', ephemeral=True)
         return
     # Mover el canal
-    await channel.edit(category=target_category)
+    await channel.edit(category=target_category, overwrites=overwrites)
     await interaction.response.send_message('Ticket movido a la categoria privada.', ephemeral=True)
 
 @bot.tree.command(name='ticket_import', description='Vuelve el ticket importante.')
-@commands.has_permissions(administrator=True)
-async def ticket_priv(interaction: discord.Interaction):
+@commands.has_permissions(administrator=True, manage_guild=True)
+@commands.has_permissions(manage_channels=True)
+async def ticket_import(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     channel = interaction.channel
     # Mueve el ticket a categoria privada
     target_category = discord.utils.get(interaction.guild.categories, id=1271988295102107680)
@@ -387,8 +450,12 @@ async def ticket_priv(interaction: discord.Interaction):
     await interaction.response.send_message('Ticket movido a la categoria de importante.', ephemeral=True)
 
 @bot.tree.command(name='ticket_mediun', description='Vuelve el ticket de importancia media.')
-@commands.has_permissions(administrator=True)
-async def ticket_priv(interaction: discord.Interaction):
+@commands.has_permissions(administrator=True, manage_guild=True)
+@commands.has_permissions(manage_channels=True)
+async def ticket_mediun(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == 800524247214063656:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
     channel = interaction.channel
     # Mueve el ticket a categoria privada
     target_category = discord.utils.get(interaction.guild.categories, id=1271988774666108928)

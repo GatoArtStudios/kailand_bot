@@ -5,7 +5,7 @@ from discord.ui import Select, View, Button
 import asyncio
 import sql
 from config import PATH as path
-from config import TICKET_CATEGORY_ID
+from config import TICKET_CATEGORY_ID, user_ticket
 from types_utils import EstadosUsuario
 
 db = sql.SQL()
@@ -38,7 +38,10 @@ class TicketSelect(discord.ui.Select):
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True)
+            guild.me: discord.PermissionOverwrite(read_messages=True),
+            discord.utils.get(guild.roles, id=1154950225505550417): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a helpers
+            discord.utils.get(guild.roles, id=1105643863584014508): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a moderadores
+            discord.utils.get(guild.roles, id=1078126338638094366): discord.PermissionOverwrite(read_messages=True) # Le da permisos de leer mensajes a tecnicos
         }
         ticket_channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
 
@@ -54,7 +57,8 @@ class TicketSelect(discord.ui.Select):
         view_ticket = TicketSelectView()
         await interaction.message.edit(view=view_ticket)
         message = await ticket_channel.send(f'{user.mention}' ,embed=embed_ticket, view=view)
-        db.insertar('INSERT INTO ticket_messages (message_id, channel_id) VALUES (%s, %s)', (message.id, ticket_channel.id))
+        user_ticket[ticket_channel.id] = user.id
+        db.insertar('INSERT INTO ticket_messages (message_id, channel_id, author_id) VALUES (%s, %s, %s)', (message.id, ticket_channel.id, user.id))
 
 # ? ------------------------------------ Views para los embeds que cierran los tickets ------------------------------------
 

@@ -17,3 +17,6 @@ DB_HOST = os.environ.get('DB_HOST')
 
 # ID de la categoria de tickets
 TICKET_CATEGORY_ID = 1196886668519677952
+
+# Almacenamos los usaurios que han abierto tickets
+user_ticket = {}
