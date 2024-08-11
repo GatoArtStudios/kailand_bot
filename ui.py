@@ -5,7 +5,7 @@ from discord.ui import Select, View, Button
 import asyncio
 import sql
 from config import PATH as path
-from config import TICKET_CATEGORY_ID, user_ticket
+from config import TICKET_CATEGORY_ID, user_ticket, ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN
 from types_utils import EstadosUsuario
 
 db = sql.SQL()
@@ -39,9 +39,9 @@ class TicketSelect(discord.ui.Select):
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True),
-            discord.utils.get(guild.roles, id=1154950225505550417): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a helpers
-            discord.utils.get(guild.roles, id=1105643863584014508): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a moderadores
-            discord.utils.get(guild.roles, id=1078126338638094366): discord.PermissionOverwrite(read_messages=True) # Le da permisos de leer mensajes a tecnicos
+            discord.utils.get(guild.roles, id=ID_ROLE_HELPER): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a helpers
+            discord.utils.get(guild.roles, id=ID_ROLE_MOD): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a moderadores
+            discord.utils.get(guild.roles, id=ID_ROLE_TECN): discord.PermissionOverwrite(read_messages=True) # Le da permisos de leer mensajes a tecnicos
         }
         ticket_channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
 
