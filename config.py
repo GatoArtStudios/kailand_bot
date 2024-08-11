@@ -14,3 +14,6 @@ DB_PASSWD = os.environ.get('DB_PASSWD')
 DB_USER = os.environ.get('DB_USER')
 DB_PORT = os.environ.get('DB_PORT')
 DB_HOST = os.environ.get('DB_HOST')
+
+# ID de la categoria de tickets
+TICKET_CATEGORY_ID = 1196886668519677952

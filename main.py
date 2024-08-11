@@ -22,7 +22,8 @@ db = SQL()
 
 # TODO: Crea tablas en la base de datos
 db.run("CREATE TABLE IF NOT EXISTS users (id BIGINT PRIMARY KEY, name VARCHAR(255), time BIGINT)")
-db.run("CREATE TABLE IF NOT EXISTS message (id BIGINT PRIMARY KEY, channel BIGINT)")
+db.run("CREATE TABLE IF NOT EXISTS ticket_message (message_id BIGINT PRIMARY KEY, channel_id BIGINT)")
+db.run("CREATE TABLE IF NOT EXISTS ticket_messages (message_id BIGINT PRIMARY KEY, channel_id BIGINT)")
 db.run('CREATE TABLE IF NOT EXISTS channel (id BIGINT PRIMARY KEY, name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))')
 db.run("CREATE TABLE IF NOT EXISTS roles (id_rol BIGINT PRIMARY KEY, rol_name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))")
 db.run("CREATE TABLE IF NOT EXISTS datetime (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, user_name VARCHAR(255), timestamp BIGINT, estado VARCHAR(255))")
@@ -66,6 +67,7 @@ async def on_ready():
         message = db.consulta("SELECT * FROM message").fetchall()
         if len(message) > 0: # Verificamos si hay mensajes guardados
             logging.info(f'Editando el mensaje de registro con iD: {message[0][0]}')
+            print(f'Editando el mensaje de registro con iD: {message[0][0]}')
             for i in message: # Iteramos los mensajes
                 channel = bot.get_channel(i[1]) # Obtenemos el canal con el id
                 if channel: # Verificamos si el canal existe
@@ -75,7 +77,40 @@ async def on_ready():
                             view = ui.REGISTER(user_online, db)
                             await message.edit(view=view) # Editamos el mensaje, esto nos permitirá seguir interactuando con el botón.
                     except Exception as e:
-                        pass
+                        print(f'Error al editar el mensaje: {message.id}')
+                        logging.error(f'Error al editar el mensaje: {message.id}')
+        # TODO: Consultamos todos los tickets de la base de datos
+        ticket_messages = db.consulta("SELECT * FROM ticket_messages").fetchall()
+        if len(ticket_messages) > 0: # Verificamos si hay tickets guardados
+            logging.info(f'Editando el ticket de registro con iD: {ticket_messages[0][0]}')
+            for i in ticket_messages: # Iteramos los tickets
+                channel_id, message_id = i[1], i[0]
+                channel = bot.get_channel(channel_id) # Obtenemos el canal con el id
+                if channel: # Verificamos si el canal existe
+                    try:
+                        message = await channel.fetch_message(message_id) # Obtenemos el mensaje del canal con el id del mensaje
+                        if message: # Verificamos si el mensaje existe
+                            view = ui.TicketCloseView()
+                            await message.edit(view=view) # Editamos el mensaje, esto nos permitira seguir interactuando con el botón.
+                    except Exception as e:
+                        print(f'Error al editar el mensaje: {message.id}')
+                        logging.error(f'Error al editar el mensaje: {message.id}')
+        # TODO: Consultamos todos los tickets de la base de datos
+        ticket_messages = db.consulta("SELECT * FROM ticket_message").fetchall()
+        if len(ticket_messages) > 0: # Verificamos si hay tickets guardados
+            logging.info(f'Editando el ticket de registro con iD: {ticket_messages[0][0]}')
+            for i in ticket_messages: # Iteramos los tickets
+                channel_id, message_id = i[1], i[0]
+                channel = bot.get_channel(channel_id) # Obtenemos el canal con el id
+                if channel: # Verificamos si el canal existe
+                    try:
+                        message = await channel.fetch_message(message_id) # Obtenemos el mensaje del canal con el id del mensaje
+                        if message: # Verificamos si el mensaje existe
+                            view = ui.TicketSelectView()
+                            await message.edit(view=view) # Editamos el mensaje, esto nos permitira seguir interactuando con el botón.
+                    except Exception as e:
+                        print(f'Error al editar el mensaje: {message.id}')
+                        logging.error(f'Error al editar el mensaje: {message.id}')
         # ? ------------------------------------ Buscamos los usuarios a monitoria la actividad ------------------------------------
         # TODO: Consultamos todos los roles de la base de datos
         server = db.consulta("SELECT * FROM roles").fetchall()
@@ -313,71 +348,56 @@ async def del_channel(interaction: discord.Interaction, channel: discord.TextCha
 
 @bot.tree.command(name='set_ticket', description='Setea el canal de tickets.')
 @commands.has_permissions(administrator=True)
-# async def set_ticket(interaction: discord.Interaction, canal: discord.TextChannel):
 async def set_ticket(interaction: discord.Interaction):
+    channel = interaction.channel
     embed = ui.CreateEmbed('Tickets', 'Aca puedes solicitar soporte para ayudar o reportar algun problema con **kailand**, la respuesta a tu ticket no sera de forma inmediata.\n\n> Solo puedes tener un ticket abierto por usuario.\n\n***Por favor, selecciona el tipo de soporte que necesitas:***', color=ColorDiscord.PURPLE.value)
-    embed.set_thumbnail(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/Banner_Tickets.png')
-    # embed.set_footer(text='Creado por GatoArtStudios', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/Banner_Tickets.png')
-    embed.set_image(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/Banner_Tickets.png')
-    options = [
-        discord.SelectOption(label="Soporte Minecraft", description="Ayuda con problemas con el servidor de minecraft.", emoji="🛠️"),
-        discord.SelectOption(label="Soporte Discord", description="Ayuda con problemas con el servidor de discord.", emoji="💬"),
-        discord.SelectOption(label="Soporte Launcher", description="Ayuda con problemas con el launcher.", emoji="🖥️"),
-        discord.SelectOption(label="Soporte Técnico", description="Ayuda con problemas técnicos.", emoji="👨‍💻"),
-        discord.SelectOption(label="Consultas Generales", description="Resuelve tus dudas.", emoji="❓"),
-        discord.SelectOption(label="Reporte de Bugs", description="Informa sobre un error.", emoji="🐛"),
-    ]
-    select = Select(
-        placeholder='Elige el tipo de soporte que necesitas',
-        options=options,
-        custom_id='select',
-        min_values=1,
-        max_values=1
-    )
+    embed.set_thumbnail(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
+    embed.set_footer(text='By Kailand', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
+    embed.set_image(url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/Banner_Tickets.png')
 
-    async def select_callback(interaction: discord.Interaction):
-        tipo_soporte = select.values[0].replace('Soporte ', '').replace('Consultas Generales', 'General').replace('Reporte de Bugs', 'Bugs')
-        user = interaction.user
-        guild = interaction.guild
+    view = ui.TicketSelectView()
+    await interaction.response.send_message('Cargando...\nSeteando canal de tickets.', ephemeral=True)
+    message = await channel.send(embed=embed, view=view)
+    db.insertar('INSERT INTO ticket_message (message_id, channel_id) VALUES (%s, %s)', (message.id, channel.id))
 
-        # Creamos el canal para el ticket
-        category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
-        channel_name = f'{tipo_soporte}-{user.display_name}'.replace(' ', '-').lower()
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True)
-        }
-        ticket_channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
+@bot.tree.command(name='ticket_priv', description='Vuelve el ticket privado.')
+@commands.has_permissions(administrator=True)
+async def ticket_priv(interaction: discord.Interaction):
+    channel = interaction.channel
+    # Mueve el ticket a categoria privada
+    target_category = discord.utils.get(interaction.guild.categories, id=1271989776114782238)
+    if not target_category:
+        await interaction.response.send_message('No se encontro la categoria privada.', ephemeral=True)
+        return
+    # Mover el canal
+    await channel.edit(category=target_category)
+    await interaction.response.send_message('Ticket movido a la categoria privada.', ephemeral=True)
 
-        await interaction.response.send_message(f'Ticket creado en {ticket_channel.mention}.', ephemeral=True)
+@bot.tree.command(name='ticket_import', description='Vuelve el ticket importante.')
+@commands.has_permissions(administrator=True)
+async def ticket_priv(interaction: discord.Interaction):
+    channel = interaction.channel
+    # Mueve el ticket a categoria privada
+    target_category = discord.utils.get(interaction.guild.categories, id=1271988295102107680)
+    if not target_category:
+        await interaction.response.send_message('No se encontro la categoria impontante.', ephemeral=True)
+        return
+    # Mover el canal
+    await channel.edit(category=target_category)
+    await interaction.response.send_message('Ticket movido a la categoria de importante.', ephemeral=True)
 
-        embed_ticket = ui.CreateEmbed(
-            f'Ticket de {tipo_soporte}',
-            f'Bienvenido, {user.mention}.\nUn miembro del equipo de soporte te atenderá lo más rápido que puedan en el canal de tickets que acabas de crear.',
-            color=ColorDiscord.GREEN.value
-        )
-        close_buttom = Button(
-            label='Cerra el ticket',
-            emoji='🔒',
-            custom_id='close_ticket',
-            style=discord.ButtonStyle.red
-        )
-        async def close_buttom_callback(interaction: discord.Interaction):
-            await ticket_channel.delete()
-            await interaction.response.send_message('Ticket cerrado.', ephemeral=True)
-        
-        close_buttom.callback = close_buttom_callback
-        
-        view = View()
-        view.add_item(close_buttom)
-        
-        await ticket_channel.send(f'{user.mention}' ,embed=embed_ticket, view=view)
-    
-    select.callback = select_callback
-    view = View()
-    view.add_item(select)
-    await interaction.response.send_message(embed=embed, view=view)
+@bot.tree.command(name='ticket_mediun', description='Vuelve el ticket de importancia media.')
+@commands.has_permissions(administrator=True)
+async def ticket_priv(interaction: discord.Interaction):
+    channel = interaction.channel
+    # Mueve el ticket a categoria privada
+    target_category = discord.utils.get(interaction.guild.categories, id=1271988774666108928)
+    if not target_category:
+        await interaction.response.send_message('No se encontro la categoria importancia media.', ephemeral=True)
+        return
+    # Mover el canal
+    await channel.edit(category=target_category)
+    await interaction.response.send_message('Ticket movido a la categoria de importancia media.', ephemeral=True)
 
 # ? --------------------------- De eventos loops ---------------------------
 

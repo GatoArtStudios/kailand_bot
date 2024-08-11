@@ -50,10 +50,8 @@ class SQL:
         try:
             self.reconnect_if_needed()
             self.cursor.execute(query)
-            print(self.cursor.lastrowid)
             self.conn.commit()
         except Exception as e:
-            logging.error(f'Error al ejecutar query: {query}, error: {e}')
             print(f'Error al ejecutar query: {query}, error: {e}')
 
     def consulta(self, query):
@@ -62,9 +60,6 @@ class SQL:
         '''
         self.reconnect_if_needed()
         self.cursor.execute(query)
-        print(self.cursor.lastrowid)
-        # self.conn.commit()
-        print(f'Consulta realizada: {query}')
         return self.cursor
 
     def insertar(self, query, values):
@@ -74,13 +69,10 @@ class SQL:
         try:
             self.reconnect_if_needed()
             self.cursor.execute(query, values)
-            print(self.cursor.lastrowid)
             self.conn.commit()
-            print(f'Insertado query: {query}, values: {values}')
             return True
         except Exception as e:
             logging.error(f'Error al insertar query: {query}, error: {e}')
-            print(f'Error al insertar query: {query}, error: {e}')
             return False
 
     def crear_tabla(self, query):
@@ -97,7 +89,6 @@ class SQL:
         timestamp = int(datetime.now().timestamp())
         query = 'INSERT INTO datetime (user_id, user_name, timestamp, estado) VALUES (%s, %s, %s, %s)'
         values = (user_id, user_name, timestamp, estado.value)
-        print(f'{user_name} {estado.value}')
         self.insertar(query, values)
 
     def del_message(self, ctx: discord.Message, user_action: str, user_action_id: int):
