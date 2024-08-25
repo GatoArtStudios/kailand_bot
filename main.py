@@ -13,6 +13,7 @@ import ui
 from  sql import SQL
 import utils
 import config
+import typing
 from config import user_ticket, ID_DEVELOPER, ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN, TICKET_CATEGORY_PRIVATE_ID, TICKET_CATEGORY_MEDIUN_ID, TICKET_CATEGORY_IMPORT_ID
 from types_utils import EstadosUsuario, ConverStatus, ColorDiscord
 from log import logging
@@ -23,6 +24,7 @@ db = SQL()
 
 # TODO: Crea tablas en la base de datos
 db.run("CREATE TABLE IF NOT EXISTS users (id BIGINT PRIMARY KEY, name VARCHAR(255), time BIGINT)")
+db.run("CREATE TABLE IF NOT EXISTS message (id BIGINT PRIMARY KEY, channel BIGINT)")
 db.run("CREATE TABLE IF NOT EXISTS ticket_message (message_id BIGINT PRIMARY KEY, channel_id BIGINT)")
 db.run("CREATE TABLE IF NOT EXISTS ticket_messages (message_id BIGINT PRIMARY KEY, channel_id BIGINT, author_id BIGINT)")
 db.run('CREATE TABLE IF NOT EXISTS channel (id BIGINT PRIMARY KEY, name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))')
@@ -377,6 +379,36 @@ async def del_channel(interaction: discord.Interaction, channel: discord.TextCha
     except Exception as e:
         await interaction.response.send_message(f'# Error al eliminar el canal. \n{channel.name}', ephemeral=True)
 
+@bot.tree.command(name='embed', description='Comando para crear Embed')
+@commands.has_permissions(administrator=True)
+@app_commands.autocomplete(color=utils.color_autocomplete)
+@app_commands.describe(color='Color del Embed', title='Tiulo del Embed', description='Descripción del Embed', description_embed='Descripción del Embed', author='Autor del Embed', channel='Canal donde se enviara el Embed')
+async def create_embed(interaction: discord.Interaction, channel: discord.TextChannel, color: str, title: typing.Optional[str] = None, description: typing.Optional[str] = None, description_embed: typing.Optional[str] = None, author: typing.Optional[discord.Member] = None):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
+    color_value = ColorDiscord[color.upper()].value
+    description_embed = description_embed.replace('\\n', '\n')
+    embed = discord.Embed(
+        title=title,
+        description=description_embed,
+        color=color_value
+    )
+
+    if author is None and description is None:
+        await channel.send(embed=embed)
+        await interaction.response.send_message(f"Mensaje enviado al canal {channel.mention}", ephemeral=True)
+    elif author is None:
+        await channel.send(content=description,embed=embed)
+        await interaction.response.send_message(f"Mensaje enviado al canal {channel.mention}", ephemeral=True)
+    else:
+        if description is None:
+            embed.set_author(name=author.display_name, icon_url=author.display_avatar.url)
+            await channel.send(embed=embed)
+            await interaction.response.send_message(f"Mensaje enviado al canal {channel.mention}", ephemeral=True)
+        else:
+            await channel.send(f'{description}\n\nAutor: {author}',embed=embed)
+            await interaction.response.send_message(f"Mensaje enviado al canal {channel.mention}", ephemeral=True)
 
 # ? --------------------------- Sistema de tickets ---------------------------
 
