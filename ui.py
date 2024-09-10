@@ -56,9 +56,7 @@ class TicketSelect(discord.ui.Select):
         view = TicketCloseView()
         view_ticket = TicketSelectView()
         await interaction.message.edit(view=view_ticket)
-        message = await ticket_channel.send(f'@everyone {user.mention}' ,embed=embed_ticket, view=view)
-        user_ticket[ticket_channel.id] = user.id
-        db.insertar('INSERT INTO ticket_messages (message_id, channel_id, author_id) VALUES (%s, %s, %s)', (message.id, ticket_channel.id, user.id))
+        await ticket_channel.send(f'@everyone {user.mention}' , embed=embed_ticket, view=view)
 
 # ? ------------------------------------ Views para los embeds que cierran los tickets ------------------------------------
 
@@ -113,9 +111,9 @@ class REGISTER(discord.ui.View):
             return
 
         if interaction.user.id not in self.user_online:
-            self.user_online[interaction.user.id] = {'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.display_name}
+            self.user_online[interaction.user.id] = {'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.name}
         else:
-            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.display_name})
+            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.name})
 
         # Formatear la fecha y hora actual
         current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
@@ -125,7 +123,7 @@ class REGISTER(discord.ui.View):
             description='**Nota:** Recuerda registrar tu salida de la jornada laboral'
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.EN_LINEA)
+        self.db.datetime(interaction.user.id, interaction.user.name, EstadosUsuario.EN_LINEA)
         embed = discord.Embed(
             title=f'Ticket de registro de ingreso el dia {current_time_str}',
             color=5763719,
@@ -153,13 +151,13 @@ class REGISTER(discord.ui.View):
             await interaction.response.send_message(embed=emb, ephemeral=True)
             return
         else:
-            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.display_name})
+            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.name})
 
         # Formatear la fecha y hora actual
         current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
         em = CreateEmbed(title='Su salida ha sido registrada existosamente a el dia:' + current_time_str, description='Ten un grandioso dia.', color=15105570)
         await interaction.response.send_message(embed=em, ephemeral=True)
-        self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
+        self.db.datetime(interaction.user.id, interaction.user.name, EstadosUsuario.DESCONECTADO)
         self.user_online.pop(interaction.user.id) # Eliminamos el usuario de la lista de usuarios en linea
         em = CreateEmbed(f'Ticket de registro de salida el dia {current_time_str}.', color=15105570, description='Si no ha sido usted, por favor ignore este mensaje.')
         await interaction.user.send(embed=em)
@@ -174,15 +172,13 @@ class REGISTER(discord.ui.View):
             await interaction.response.send_message(embed=emb, ephemeral=True)
             return
 
-        print(self.user_online)
-
         if self.user_online[interaction.user.id]['estado'] == EstadosUsuario.EN_LINEA:
             em = CreateEmbed(title='Tiempo de trabajo pausado.', description='Ten un grandioso dia.', color=ColorDiscord.ORANGE.value)
-            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.display_name})
+            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.name})
             await interaction.response.send_message(embed=em, ephemeral=True)
-            self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
+            self.db.datetime(interaction.user.id, interaction.user.name, EstadosUsuario.DESCONECTADO)
         else:
             em = CreateEmbed(title='Se reanudo el tiempo de trabajo.', description='Ten un grandioso dia.', color=ColorDiscord.GREEN.value)
-            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.display_name})
+            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.name})
             await interaction.response.send_message(embed=em, ephemeral=True)
-            self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.EN_LINEA)
+            self.db.datetime(interaction.user.id, interaction.user.name, EstadosUsuario.EN_LINEA)

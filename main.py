@@ -26,10 +26,6 @@ db = SQL()
 
 # TODO: Crea tablas en la base de datos
 db.run("CREATE TABLE IF NOT EXISTS users (id BIGINT PRIMARY KEY, name VARCHAR(255), time BIGINT)")
-db.run("CREATE TABLE IF NOT EXISTS message (id BIGINT PRIMARY KEY, channel BIGINT)")
-db.run("CREATE TABLE IF NOT EXISTS ticket_message (message_id BIGINT PRIMARY KEY, channel_id BIGINT)")
-db.run("CREATE TABLE IF NOT EXISTS ticket_messages (message_id BIGINT PRIMARY KEY, channel_id BIGINT, author_id BIGINT)")
-db.run('CREATE TABLE IF NOT EXISTS channel (id BIGINT PRIMARY KEY, name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))')
 db.run("CREATE TABLE IF NOT EXISTS roles (id_rol BIGINT PRIMARY KEY, rol_name VARCHAR(255), id_server BIGINT, server_name VARCHAR(255))")
 db.run("CREATE TABLE IF NOT EXISTS datetime (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, user_name VARCHAR(255), timestamp BIGINT, estado VARCHAR(255))")
 db.run("CREATE TABLE IF NOT EXISTS del_message (id BIGINT AUTO_INCREMENT PRIMARY KEY, server VARCHAR(255), channel VARCHAR(255), message VARCHAR(255), message_author VARCHAR(255), message_author_id BIGINT, user_action VARCHAR(255), user_action_id BIGINT, timestamp BIGINT)")
@@ -86,13 +82,10 @@ async def on_ready():
                     role = discord.utils.get(server.roles, id=i[0]) # Obtenemos el rol con el id
                     if role: # Verificamos si el rol existe
                         for menber in role.members: # Iteramos los miembros del rol
-                            user_id, user_name, status = menber.id, menber.display_name, menber.status
+                            user_id, user_name, status = menber.id, menber.name, menber.status
                             logging.info(f'Usuario registrado: {user_id}, {user_name}')
                             # continue
-                            print(f'Usuario registrado: {user_id}, {user_name}, estado: {status}')
                             if user_id and user_name:
-                                if user_id not in user_online and ConverStatus(status) == EstadosUsuario.EN_LINEA:
-                                    user_online[user_id] = {'estado': ConverStatus(status), 'name': user_name}
                                 if user_id not in user_register:
                                     user_register[user_id] = {'estado': ConverStatus(status), 'name': user_name}
                                 else:
@@ -101,6 +94,15 @@ async def on_ready():
                                 db.insertar("INSERT INTO users (id, name, time) VALUES (%s, %s, %s)", (user_id, user_name, 0))
                             else:
                                 continue
+        users_valided_online = db.consulta("SELECT * FROM datetime").fetchall()
+        if len(users_valided_online) > 0:
+            for user in users_valided_online:
+                # print(f'Id: {user[1]}, Estado: {user[4]}, Nombre: {user[2]}')
+                if user[4] == 'EN LINEA':
+                    user_online[user[1]] = {'estado': EstadosUsuario.EN_LINEA, 'name': user[2]}
+                else:
+                    if user[1] in user_online:
+                        del user_online[user[1]]
     # ? ------------------------------------ Sincronizamos comandos y actualizamos el estado del bot ------------------------------------
         synced = await bot.tree.sync()
         logging.info(f'Sincronizando {len(synced)} commando (s)')
@@ -278,7 +280,6 @@ async def set_register(interaction: discord.Interaction):
     message = await interaction.channel.send(embed=embed, view=ui.REGISTER(user_online, db))
     await interaction.response.send_message('**Canal seteado correctamente.**', ephemeral=True)
     # TODO: Guardamos el registro del mensaje enviado en la base de datos
-    db.insertar("INSERT INTO message (id, channel) VALUES (%s, %s)", (message.id, interaction.channel.id))
 
 
 @bot.tree.command(name='set_rol', description='Setea el Rol donde se registran los usuarios.')
@@ -409,8 +410,7 @@ async def set_ticket(interaction: discord.Interaction):
 
     view = ui.TicketSelectView()
     await interaction.response.send_message('Cargando...\nSeteando canal de tickets.', ephemeral=True)
-    message = await channel.send(embed=embed, view=view)
-    db.insertar('INSERT INTO ticket_message (message_id, channel_id) VALUES (%s, %s)', (message.id, channel.id))
+    await channel.send(embed=embed, view=view)
 
 @bot.tree.command(name='ticket_priv', description='Vuelve el ticket privado.')
 @commands.has_permissions(administrator=True, manage_guild=True)
@@ -487,7 +487,6 @@ async def event_loop_connection_db():
     '''
     Esta funcion se encargara de terminar la jornada laboral de un usuario si no lo hizo de forma manual.
     '''
-    print('Comprueva si ya es otro dia para resetear el dcit user_online')
 
     current_time = datetime.datetime.now()
     if current_time.hour == 0 and current_time.minute == 0:
