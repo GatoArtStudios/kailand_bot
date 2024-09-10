@@ -89,6 +89,7 @@ async def on_ready():
                             user_id, user_name, status = menber.id, menber.display_name, menber.status
                             logging.info(f'Usuario registrado: {user_id}, {user_name}')
                             # continue
+                            print(f'Usuario registrado: {user_id}, {user_name}, estado: {status}')
                             if user_id and user_name:
                                 if user_id not in user_online and ConverStatus(status) == EstadosUsuario.EN_LINEA:
                                     user_online[user_id] = {'estado': ConverStatus(status), 'name': user_name}
@@ -480,23 +481,31 @@ async def ticket_mediun(interaction: discord.Interaction):
 
 # ? --------------------------- De eventos loops ---------------------------
 
-@tasks.loop(minutes=1.0)
-async def register_loop():
-    '''
-    Esta funcion se encargara de terminar la jornada laboral de un usuario si no lo hizo de forma manual.
-    '''
-    print('ejecutando register_loop')
-    # print(user_online)
-    if datetime_actual != utils.datetime_now():
-        datetime_actual = utils.datetime_now()
 
 @tasks.loop(minutes=1.0)
 async def event_loop_connection_db():
     '''
     Esta funcion se encargara de terminar la jornada laboral de un usuario si no lo hizo de forma manual.
     '''
-    print('ejecutando evento de la base de datos de kailand')
-    
+    print('Comprueva si ya es otro dia para resetear el dcit user_online')
+
+    current_time = datetime.datetime.now()
+    if current_time.hour == 0 and current_time.minute == 0:
+        print('Es medianoche, reseteando user_online')
+
+        for user_id in list(user_online.keys()):
+            # buscamos que usuarios estan en modo 'EN_LINEA' y no han terminado su jornada laboral, y cambiamos a 'DESCONECTADO'
+            if user_online[user_id]['estado'] == EstadosUsuario.EN_LINEA:
+                # Luego lo almacenamos en la base de datos, luego le enviamos mensaje privado y por ultimo limpiamos el diccionario
+                db.datetime(user_id, user_online[user_id]['name'], EstadosUsuario.DESCONECTADO)
+                try:
+                    user = await bot.fetch_user(user_id)
+                    em = ui.CreateEmbed(title='Jornada laboral terminada', description=f'El usuario {user.mention} ha terminado su jornada laboral de forma automazada, recuerda que debes iniciar nuevamente tu jornada laboral.', color=ColorDiscord.BLUE.value)
+                    await user.send(embed=em)
+                except Exception as e:
+                    logging.error(f'Error al enviar mensaje privado al usuario {user_id}, error: {e}')
+
+        user_online.clear() # Limpiamos la lista de usuarios en jornada
 
 
 # ? --------------------------- Apartado de conexión del bot ---------------------------
@@ -514,13 +523,11 @@ async def main():
         if check_internet_connection():
             try:
                 logging.info("Estableciendo conexión...")
-                register_loop.start()
                 event_loop_connection_db.start()
                 await bot.start(config.TOKEN)
             except (socket.gaierror, aiohttp.client_exceptions.ClientConnectorError, RuntimeError):
                 logging.error("Conexión cerrada por error de red.")
                 event_loop_connection_db.stop()
-                register_loop.stop()
                 await bot.close()
                 break
             except KeyboardInterrupt:
