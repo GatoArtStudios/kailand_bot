@@ -122,12 +122,15 @@ class SQL:
         Método para mantener viva la conexión con la base de datos.
         Ejecuta una consulta cada 5 minutos para evitar la desconexión por inactividad.
         '''
+        time.sleep(60)
         while True:
             try:
                 self.reconnect_if_needed()
-                self.cursor.execute('SELECT 1')  # Consulta simple para mantener viva la conexión
-                self.conn.commit()
-                print('Conexión mantenida viva con consulta SELECT 1.')
+                self.consulta('SELECT 1')  # Consulta simple para mantener viva la conexión
+            except mysql.connector.Error as db_error:
+                logging.error(f'Error en el hilo keep_alive (Error de base de datos): {db_error}')
+                if self.conn and self.conn.is_connected():
+                    self.reconnect_if_needed()
             except Exception as e:
                 logging.error(f'Error en el hilo keep_alive: {e}')
             time.sleep(300)  # Espera 5 minutos
