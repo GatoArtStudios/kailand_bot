@@ -6,7 +6,7 @@ import asyncio
 import sql
 from config import PATH as path
 from config import TICKET_CATEGORY_ID, user_ticket, ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN
-from types_utils import EstadosUsuario
+from types_utils import EstadosUsuario, ColorDiscord
 
 db = sql.SQL()
 
@@ -108,7 +108,7 @@ class REGISTER(discord.ui.View):
         now = datetime.now()
 
         if interaction.user.id in self.user_online and self.user_online[interaction.user.id]['estado'] == EstadosUsuario.EN_LINEA:
-            embed = CreateEmbed(title='Ya se encuentra registrada su entrada.', description='**Nota:** Por favor no spawnes el boto, ya te encuentras registrado como usuario en linea.')
+            embed = CreateEmbed(title='Ya se encuentra registrada su entrada.', description='**Nota:** Por favor no spawnes el boto, ya te encuentras registrado como usuario en linea.', color=ColorDiscord.RED.value)
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
@@ -144,12 +144,14 @@ class REGISTER(discord.ui.View):
         now = datetime.now()
 
         if interaction.user.id in self.user_online and self.user_online[interaction.user.id]['estado'] == EstadosUsuario.DESCONECTADO:
-            embed = CreateEmbed('Registro Exitoso', 'Ya se encuentra registrada su salida.')
+            embed = CreateEmbed('Registro Exitoso', 'Ya se encuentra registrada su salida.', color=ColorDiscord.RED.value)
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
         if interaction.user.id not in self.user_online:
-            self.user_online[interaction.user.id] = {'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.display_name}
+            emb = CreateEmbed(title='Aun no has iniciado tu jornada laboral.', description='No se puede pausar el tiempo de trabajo, ya que no has iniciado la jornada laboral.', color=ColorDiscord.RED.value)
+            await interaction.response.send_message(embed=emb, ephemeral=True)
+            return
         else:
             self.user_online[interaction.user.id].update({'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.display_name})
 
@@ -158,12 +160,29 @@ class REGISTER(discord.ui.View):
         em = CreateEmbed(title='Su salida ha sido registrada existosamente a el dia:' + current_time_str, description='Ten un grandioso dia.', color=15105570)
         await interaction.response.send_message(embed=em, ephemeral=True)
         self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
+        self.user_online.pop(interaction.user.id) # Eliminamos el usuario de la lista de usuarios en linea
         em = CreateEmbed(f'Ticket de registro de salida el dia {current_time_str}.', color=15105570, description='Si no ha sido usted, por favor ignore este mensaje.')
         await interaction.user.send(embed=em)
         view_buttons = REGISTER(user_online=self.user_online, db=self.db)
         await interaction.message.edit(view=view_buttons)
-    
+
     @discord.ui.button(label="Pausar Registro", custom_id="work_button_pause", style=discord.ButtonStyle.gray)
     async def pause_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        em = CreateEmbed(title='Tiempo de trabajo pausado.', description='Ten un grandioso dia.', color=15105570)
-        await interaction.response.send_message(embed=em, ephemeral=True)
+
+        if interaction.user.id not in self.user_online:
+            emb = CreateEmbed(title='Aun no has iniciado tu jornada laboral.', description='No se puede pausar el tiempo de trabajo, ya que no has iniciado la jornada laboral.', color=ColorDiscord.RED.value)
+            await interaction.response.send_message(embed=emb, ephemeral=True)
+            return
+
+        print(self.user_online)
+
+        if self.user_online[interaction.user.id]['estado'] == EstadosUsuario.EN_LINEA:
+            em = CreateEmbed(title='Tiempo de trabajo pausado.', description='Ten un grandioso dia.', color=ColorDiscord.ORANGE.value)
+            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.DESCONECTADO, 'name': interaction.user.display_name})
+            await interaction.response.send_message(embed=em, ephemeral=True)
+            self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.DESCONECTADO)
+        else:
+            em = CreateEmbed(title='Se reanudo el tiempo de trabajo.', description='Ten un grandioso dia.', color=ColorDiscord.GREEN.value)
+            self.user_online[interaction.user.id].update({'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.display_name})
+            await interaction.response.send_message(embed=em, ephemeral=True)
+            self.db.datetime(interaction.user.id, interaction.user.display_name, EstadosUsuario.EN_LINEA)
