@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord.ext import tasks
 from discord import app_commands
 from discord.ui import View, Select, Button
 import logging
@@ -38,6 +39,7 @@ data = db.consulta("SELECT * FROM users").fetchall()
 
 user_online = {}
 user_register = {}
+datetime_actual = utils.datetime_now()
 
 # ? -------------------------------------- Configuracion de Discord --------------------------------------
 
@@ -49,6 +51,13 @@ intents.presences = True
 intents.members = True
 
 bot = commands.Bot(command_prefix='/', intents=intents)
+
+@bot.event
+async def setup_hook():
+    bot.add_view(ui.TicketSelectView())
+    bot.add_view(ui.TicketCloseView())
+    bot.add_view(ui.REGISTER(user_online, db))
+    # bot.add_dynamic_items(DynamicButton) Para botones dinamicos
 
 # ?------------------------------------ Eventos ------------------------------------
 
@@ -64,55 +73,6 @@ async def on_ready():
     logging.info('Registrando árbol de comandos')
     # ? ------------------------------------ Buscamos y editamos el mensaje que se encarga de registrar el ingreso ------------------------------------
     try:
-        # TODO: Consultamos todos los mensajes de la base de datos
-        message = db.consulta("SELECT * FROM message").fetchall()
-        if len(message) > 0: # Verificamos si hay mensajes guardados
-            logging.info(f'Editando el mensaje de registro con iD: {message[0][0]}')
-            print(f'Editando el mensaje de registro con iD: {message[0][0]}')
-            for i in message: # Iteramos los mensajes
-                channel = bot.get_channel(i[1]) # Obtenemos el canal con el id
-                if channel: # Verificamos si el canal existe
-                    try:
-                        message = await channel.fetch_message(i[0]) # Obtenemos el mensaje del canal con el id del mensaje
-                        if message: # Verificamos si el mensaje existe
-                            view = ui.REGISTER(user_online, db)
-                            await message.edit(view=view) # Editamos el mensaje, esto nos permitirá seguir interactuando con el botón.
-                    except Exception as e:
-                        print(f'Error al editar el mensaje: {message.id}')
-                        logging.error(f'Error al editar el mensaje: {message.id}')
-        # TODO: Consultamos todos los tickets de la base de datos
-        ticket_messages = db.consulta("SELECT * FROM ticket_messages").fetchall()
-        if len(ticket_messages) > 0: # Verificamos si hay tickets guardados
-            logging.info(f'Editando el ticket de registro con iD: {ticket_messages[0][0]}')
-            for i in ticket_messages: # Iteramos los tickets
-                channel_id, message_id, author_id = i[1], i[0], i[2]
-                channel = bot.get_channel(channel_id) # Obtenemos el canal con el id
-                if channel: # Verificamos si el canal existe
-                    try:
-                        message = await channel.fetch_message(message_id) # Obtenemos el mensaje del canal con el id del mensaje
-                        user_ticket[channel_id] = author_id # Guardamos el id del autor del ticket por el id del canal
-                        if message: # Verificamos si el mensaje existe
-                            view = ui.TicketCloseView()
-                            await message.edit(view=view) # Editamos el mensaje, esto nos permitira seguir interactuando con el botón.
-                    except Exception as e:
-                        print(f'Error al editar el mensaje: {message.id}')
-                        logging.error(f'Error al editar el mensaje: {message.id}')
-        # TODO: Consultamos todos los tickets de la base de datos
-        ticket_messages = db.consulta("SELECT * FROM ticket_message").fetchall()
-        if len(ticket_messages) > 0: # Verificamos si hay tickets guardados
-            logging.info(f'Editando el ticket de registro con iD: {ticket_messages[0][0]}')
-            for i in ticket_messages: # Iteramos los tickets
-                channel_id, message_id = i[1], i[0]
-                channel = bot.get_channel(channel_id) # Obtenemos el canal con el id
-                if channel: # Verificamos si el canal existe
-                    try:
-                        message = await channel.fetch_message(message_id) # Obtenemos el mensaje del canal con el id del mensaje
-                        if message: # Verificamos si el mensaje existe
-                            view = ui.TicketSelectView()
-                            await message.edit(view=view) # Editamos el mensaje, esto nos permitira seguir interactuando con el botón.
-                    except Exception as e:
-                        print(f'Error al editar el mensaje: {message.id}')
-                        logging.error(f'Error al editar el mensaje: {message.id}')
         # ? ------------------------------------ Buscamos los usuarios a monitoria la actividad ------------------------------------
         # TODO: Consultamos todos los roles de la base de datos
         server = db.consulta("SELECT * FROM roles").fetchall()
@@ -145,6 +105,7 @@ async def on_ready():
         logging.error(f'Tipo de error {e}')
     # Responde al evento colocando el estado de la actividad personalizada
     await bot.change_presence(activity=presence)
+    print('Bot iniciado correctamente.')
 
 # ? ------------------------------------ Evento de presencia ------------------------------------
 @bot.event
@@ -498,7 +459,23 @@ async def ticket_mediun(interaction: discord.Interaction):
 
 # ? --------------------------- De eventos loops ---------------------------
 
+@tasks.loop(minutes=1.0)
+async def register_loop():
+    '''
+    Esta funcion se encargara de terminar la jornada laboral de un usuario si no lo hizo de forma manual.
+    '''
+    print('ejecutando register_loop')
+    # print(user_online)
+    if datetime_actual != utils.datetime_now():
+        datetime_actual = utils.datetime_now()
 
+@tasks.loop(minutes=1.0)
+async def event_loop_connection_db():
+    '''
+    Esta funcion se encargara de terminar la jornada laboral de un usuario si no lo hizo de forma manual.
+    '''
+    print('ejecutando evento de la base de datos de kailand')
+    
 
 
 # ? --------------------------- Apartado de conexión del bot ---------------------------
@@ -511,20 +488,27 @@ def check_internet_connection():
         return False
 
 # ? --------------------------- Iniciamos el bot y el loop de conexión ---------------------------
-if __name__ == '__main__':
+async def main():
     while True:
         if check_internet_connection():
             try:
                 logging.info("Estableciendo conexión...")
-                bot.run(config.TOKEN)
+                register_loop.start()
+                event_loop_connection_db.start()
+                await bot.start(config.TOKEN)
             except (socket.gaierror, aiohttp.client_exceptions.ClientConnectorError, RuntimeError):
                 logging.error("Conexión cerrada por error de red.")
-                bot.close()
+                event_loop_connection_db.stop()
+                register_loop.stop()
+                await bot.close()
                 break
             except KeyboardInterrupt:
                 logging.info("Cerrando...")
-                bot.close()
+                await bot.close()
                 break
         else:
             print('No internet connection. Retrying in 10 seconds...')
-            time.sleep(10)
+            await asyncio.sleep(10) # 10 time.sleep(10)
+
+if __name__ == '__main__':
+    asyncio.run(main())

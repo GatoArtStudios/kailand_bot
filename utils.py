@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from types_utils import ColorDiscord
+from datetime import datetime
 
 async def color_autocomplete(interaction: discord.Interaction, current: str):
     color_names = [color.name.lower() for color in ColorDiscord]
@@ -20,3 +21,15 @@ async def transform(interaction: discord.Interaction, role: str) -> discord.Role
     if role is None:
         raise app_commands.AppCommandError(f'No se encontró el rol con el nombre: {role}')
     return role
+
+def datetime_now():
+    '''
+    Retornara la fecha actual en el formato YYYY-MM-DD
+    '''
+    # Obtener la fecha actual
+    fecha_actual = datetime.now()
+
+    # Formatear la fecha en el formato deseado
+    fecha_formateada = fecha_actual.strftime('%Y-%m-%d')
+
+    return fecha_formateada

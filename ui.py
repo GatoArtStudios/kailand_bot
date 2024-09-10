@@ -25,7 +25,7 @@ class TicketSelect(discord.ui.Select):
             discord.SelectOption(label="Soporte Launcher", description="Ayuda con problemas con el launcher.", emoji="🖥️"),
             discord.SelectOption(label="Reporte de Bugs", description="Informa sobre un error.", emoji="<:GC_anotao:812543341232259092>"),
         ]
-        super().__init__(placeholder="Elige el tipo de soporte que necesitas.", custom_id="select", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="Elige el tipo de soporte que necesitas.", custom_id="ticket_select_type", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         tipo_soporte = self.values[0].replace('Soporte ', '').replace('Consultas Generales', 'General').replace('Reporte de Bugs', 'Bugs')
@@ -56,7 +56,7 @@ class TicketSelect(discord.ui.Select):
         view = TicketCloseView()
         view_ticket = TicketSelectView()
         await interaction.message.edit(view=view_ticket)
-        message = await ticket_channel.send(f'{user.mention}' ,embed=embed_ticket, view=view)
+        message = await ticket_channel.send(f'@everyone {user.mention}' ,embed=embed_ticket, view=view)
         user_ticket[ticket_channel.id] = user.id
         db.insertar('INSERT INTO ticket_messages (message_id, channel_id, author_id) VALUES (%s, %s, %s)', (message.id, ticket_channel.id, user.id))
 
@@ -69,7 +69,7 @@ class TicketCloseView(discord.ui.View):
 
 class TicketCloseButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label="Cerra el ticket", emoji="🔒", custom_id="close_ticket", style=discord.ButtonStyle.red)
+        super().__init__(label="Cerra el ticket", emoji="🔒", custom_id="ticket_button_close", style=discord.ButtonStyle.red)
 
     async def callback(self, interaction: discord.Interaction):
         ticket_channel = interaction.channel
@@ -95,11 +95,11 @@ class REGISTER(discord.ui.View):
         """
         Constructor de la clase.
         """
-        super().__init__()
+        super().__init__(timeout=None)
         self.db = db
         self.user_online = user_online
 
-    @discord.ui.button(label="Registrar Ingreso", custom_id="register_button", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Registrar Ingreso", custom_id="work_button_start", style=discord.ButtonStyle.green)
     async def register_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """
         Método asincrónico que se ejecuta cuando se hace click en el botón "Registrarse".
@@ -135,7 +135,7 @@ class REGISTER(discord.ui.View):
         view_buttons = REGISTER(user_online=self.user_online, db=self.db)
         await interaction.message.edit(view=view_buttons)
 
-    @discord.ui.button(label='Registrar Salida', custom_id='register_out_button', style=discord.ButtonStyle.red)
+    @discord.ui.button(label='Registrar Salida', custom_id='work_button_end', style=discord.ButtonStyle.red)
     async def register_out_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         """
         Método asincrónico que se ejecuta cuando se hace click en el botón "Registrarse".
@@ -162,3 +162,8 @@ class REGISTER(discord.ui.View):
         await interaction.user.send(embed=em)
         view_buttons = REGISTER(user_online=self.user_online, db=self.db)
         await interaction.message.edit(view=view_buttons)
+    
+    @discord.ui.button(label="Pausar Registro", custom_id="work_button_pause", style=discord.ButtonStyle.gray)
+    async def pause_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        em = CreateEmbed(title='Tiempo de trabajo pausado.', description='Ten un grandioso dia.', color=15105570)
+        await interaction.response.send_message(embed=em, ephemeral=True)
