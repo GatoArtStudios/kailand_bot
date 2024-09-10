@@ -126,7 +126,7 @@ class SQL:
         while True:
             try:
                 self.reconnect_if_needed()
-                self.consulta('SELECT 1')  # Consulta simple para mantener viva la conexión
+                self.consulta('SELECT 1').fetchall()  # Consulta simple para mantener viva la conexión
             except mysql.connector.Error as db_error:
                 logging.error(f'Error en el hilo keep_alive (Error de base de datos): {db_error}')
                 if self.conn and self.conn.is_connected():
