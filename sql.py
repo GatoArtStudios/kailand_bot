@@ -7,6 +7,8 @@ import discord
 import pandas as pd
 from log import logging
 import config
+import threading
+import time
 
 class SQL:
     def __init__(self):
@@ -14,6 +16,8 @@ class SQL:
         self.conn = None
         self.cursor = None
         self.connect()
+        self.keep_alive_thread = threading.Thread(target=self.keep_alive, daemon=True)
+        self.keep_alive_thread.start()
 
     def connect(self):
         try:
@@ -112,3 +116,18 @@ class SQL:
         df['timestamp'] = df['timestamp'].apply(timestamp_to_datetime)
         print(df)
         # return rows
+
+    def keep_alive(self):
+        '''
+        Método para mantener viva la conexión con la base de datos.
+        Ejecuta una consulta cada 5 minutos para evitar la desconexión por inactividad.
+        '''
+        while True:
+            try:
+                self.reconnect_if_needed()
+                self.cursor.execute('SELECT 1')  # Consulta simple para mantener viva la conexión
+                self.conn.commit()
+                print('Conexión mantenida viva con consulta SELECT 1.')
+            except Exception as e:
+                logging.error(f'Error en el hilo keep_alive: {e}')
+            time.sleep(300)  # Espera 5 minutos
