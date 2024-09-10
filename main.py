@@ -6,6 +6,7 @@ from discord.ui import View, Select, Button
 import logging
 import ping3
 import time
+import datetime
 import socket
 import aiohttp
 import json
@@ -39,6 +40,7 @@ data = db.consulta("SELECT * FROM users").fetchall()
 
 user_online = {}
 user_register = {}
+user_spam = {}
 datetime_actual = utils.datetime_now()
 
 # ? -------------------------------------- Configuracion de Discord --------------------------------------
@@ -148,6 +150,25 @@ async def on_presence_update(before: discord.Member, after: discord.Member):
                 logging.info(f'Estado: {EstadosUsuario.DESCONECTADO}, {after.display_name}, ({after.id})')
 
 # ? ------------------------------------ Eventos de mensajes ------------------------------------
+
+@bot.event
+async def on_message(message: discord.Message):
+    if message.author.bot:
+        return
+    # Verificacion si el usuario no tiene autorizacion para mencionar a todos los usuarios
+    if not message.author.guild_permissions.mention_everyone and '@everyone' in message.content:
+        await message.delete()
+        if message.author.id in user_spam:
+            user_spam[message.author.id] += 1
+        else:
+            user_spam[message.author.id] = 1
+        if user_spam[message.author.id] >= 3:
+            try:
+                timeout_expired = datetime.timedelta(seconds=60)
+                await message.author.timeout(timeout_expired, reason="Esta haciendo spam mencionando a todos los usuarios, posible cuenta comprometida.")
+            except Exception as e:
+                print("Error al aislar a cuenta comprometida: " + message.author.display_name)
+            user_spam[message.author.id] = 0
 
 @bot.event
 async def on_message_delete(message: discord.Message):
