@@ -1,14 +1,29 @@
-import discord
-from datetime import datetime
-from types_utils import ColorDiscord
-from discord.ui import Select, View, Button
 import asyncio
+from datetime import datetime
+
+import discord
+from discord.ui import Button, Select, View
+
 import sql
+from config import ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN
 from config import PATH as path
-from config import TICKET_CATEGORY_ID, user_ticket, ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN
-from types_utils import EstadosUsuario, ColorDiscord
+from config import TICKET_CATEGORY_ID, user_ticket
+from types_utils import ColorDiscord, EstadosUsuario
+import utils
 
 db = sql.SQL()
+
+class ServerStatusView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(ServerStatusButtonNotify())
+
+class ServerStatusButtonNotify(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Notificar", emoji="🔔", custom_id="server_status_button_notify", style=discord.ButtonStyle.gray)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message('Ahora tienes las notificaciones activadas.', ephemeral=True)
 
 # ? ------------------------------------ Views de los tickets (DropSelect) ------------------------------------
 
@@ -35,28 +50,10 @@ class TicketSelect(discord.ui.Select):
         # Creamos el canal para el ticket
         category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
         channel_name = f'{tipo_soporte}-{user.display_name}'.replace(' ', '-').lower()
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True),
-            discord.utils.get(guild.roles, id=ID_ROLE_HELPER): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a helpers
-            discord.utils.get(guild.roles, id=ID_ROLE_MOD): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a moderadores
-            discord.utils.get(guild.roles, id=ID_ROLE_TECN): discord.PermissionOverwrite(read_messages=True) # Le da permisos de leer mensajes a tecnicos
-        }
-        ticket_channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
-
-        await interaction.response.send_message(f'Ticket creado en {ticket_channel.mention}.', ephemeral=True)
-
-        embed_ticket = CreateEmbed(
-            f'Ticket de {tipo_soporte}',
-            f'Bienvenido, {user.mention}.\nUn miembro del equipo de soporte te atenderá lo más rápido que puedan en el canal de tickets que acabas de crear.',
-            color=ColorDiscord.GREEN.value
-        )
-
-        view = TicketCloseView()
+        ticket = CreateTicket(interaction, user, channel_name)
+        await ticket.create()
         view_ticket = TicketSelectView()
         await interaction.message.edit(view=view_ticket)
-        await ticket_channel.send(f'@everyone {user.mention}' , embed=embed_ticket, view=view)
 
 # ? ------------------------------------ Views para los embeds que cierran los tickets ------------------------------------
 
@@ -73,7 +70,7 @@ class TicketCloseButton(discord.ui.Button):
         ticket_channel = interaction.channel
         if ticket_channel:
                 try:
-                    await interaction.response.send_message('Ticket cerrado.', ephemeral=True)
+                    await interaction.response.send_message('Ticket cerrado.')
                     await asyncio.sleep(3)
                     await ticket_channel.delete()
                 except Exception as e:
@@ -182,3 +179,39 @@ class REGISTER(discord.ui.View):
             self.user_online[interaction.user.id].update({'estado': EstadosUsuario.EN_LINEA, 'name': interaction.user.name})
             await interaction.response.send_message(embed=em, ephemeral=True)
             self.db.datetime(interaction.user.id, interaction.user.name, EstadosUsuario.EN_LINEA)
+
+# class onStatusServer(CreateEmbed):
+#     def __init__(self):
+#         super().__init__(title='ESTADO DEL SERVIDOR', description='', color=ColorDiscord.GREEN.value)
+#         self.set_thumbnail(url='')
+
+class CreateTicket:
+    def __init__(self, interaction: discord.Interaction, user: discord.User, channel_name: str = None):
+        self.interaction = interaction
+        self.user = user
+        self.channel_name = channel_name if channel_name else f'ticket-{user.display_name}'
+    async def create(self):
+        guild = self.interaction.guild
+
+        category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            self.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            guild.me: discord.PermissionOverwrite(read_messages=True),
+            discord.utils.get(guild.roles, id=ID_ROLE_HELPER): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a helpers
+            discord.utils.get(guild.roles, id=ID_ROLE_MOD): discord.PermissionOverwrite(read_messages=True), # Le da permisos de leer mensajes a moderadores
+            discord.utils.get(guild.roles, id=ID_ROLE_TECN): discord.PermissionOverwrite(read_messages=True) # Le da permisos de leer mensajes a tecnicos
+        }
+        ticket_channel = await guild.create_text_channel(self.channel_name, category=category, overwrites=overwrites)
+
+        await self.interaction.response.send_message(f'Ticket creado en {ticket_channel.mention}.', ephemeral=True)
+
+        embed_ticket = CreateEmbed(
+            f'Ticket de soporte personalizado',
+            f'Bienvenido, {self.user.mention}.\nUn miembro del equipo de soporte te atenderá lo más rápido que puedan en el canal de tickets que acabas de crear.',
+            color=ColorDiscord.GREEN.value
+        )
+
+        view = TicketCloseView()
+
+        await ticket_channel.send(f'@everyone {self.user.mention}' , embed=embed_ticket, view=view)

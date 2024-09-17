@@ -55,6 +55,7 @@ async def setup_hook():
     bot.add_view(ui.TicketSelectView())
     bot.add_view(ui.TicketCloseView())
     bot.add_view(ui.REGISTER(user_online, db))
+    bot.add_view(ui.ServerStatusView())
     # bot.add_dynamic_items(DynamicButton) Para botones dinamicos
 
 # ?------------------------------------ Eventos ------------------------------------
@@ -411,6 +412,15 @@ async def set_ticket(interaction: discord.Interaction):
     view = ui.TicketSelectView()
     await interaction.response.send_message('Cargando...\nSeteando canal de tickets.', ephemeral=True)
     await channel.send(embed=embed, view=view)
+
+@bot.tree.command(name='create_ticket', description='Crea un ticket personalizado para dar soporte a un usuario en concreto.')
+@commands.has_permissions(administrator=True, manage_guild=True)
+async def set_ticket(interaction: discord.Interaction, user: discord.Member):
+    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
+    ticket = ui.CreateTicket(interaction, user)
+    await ticket.create()
 
 @bot.tree.command(name='ticket_priv', description='Vuelve el ticket privado.')
 @commands.has_permissions(administrator=True, manage_guild=True)
