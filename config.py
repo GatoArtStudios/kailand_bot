@@ -22,6 +22,9 @@ ID_ROLE_TECN = int(os.environ.get('ID_ROLE_TECN'))
 TICKET_CATEGORY_PRIVATE_ID = int(os.environ.get('TICKET_CATEGORY_PRIVATE_ID'))
 TICKET_CATEGORY_MEDIUN_ID = int(os.environ.get('TICKET_CATEGORY_MEDIUN_ID'))
 TICKET_CATEGORY_IMPORT_ID = int(os.environ.get('TICKET_CATEGORY_IMPORT_ID'))
+ID_ROLE_SERVERSTATUS = int(os.environ.get('ID_ROLE_SERVERSTATUS'))
+API_KEY = os.environ.get('API_KEY')
+END_POINT_API = os.environ.get('END_POINT_API')
 
 # Almacenamos los usaurios que han abierto tickets
 user_ticket = {}

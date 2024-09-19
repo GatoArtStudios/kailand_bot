@@ -5,7 +5,7 @@ import discord
 from discord.ui import Button, Select, View
 
 import sql
-from config import ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN
+from config import ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN, ID_ROLE_SERVERSTATUS
 from config import PATH as path
 from config import TICKET_CATEGORY_ID, user_ticket
 from types_utils import ColorDiscord, EstadosUsuario
@@ -16,6 +16,8 @@ db = sql.SQL()
 class ServerStatusView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.add_item(ServerStatusButtonStart())
+        self.add_item(ServerStatusButtonStop())
         self.add_item(ServerStatusButtonNotify())
 
 class ServerStatusButtonNotify(discord.ui.Button):
@@ -23,7 +25,44 @@ class ServerStatusButtonNotify(discord.ui.Button):
         super().__init__(label="Notificar", emoji="🔔", custom_id="server_status_button_notify", style=discord.ButtonStyle.gray)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message('Ahora tienes las notificaciones activadas.', ephemeral=True)
+        rol = interaction.guild.get_role(ID_ROLE_SERVERSTATUS)
+        user_rol = interaction.user.get_role(ID_ROLE_SERVERSTATUS)
+        if user_rol:
+            await interaction.user.remove_roles(rol)
+            await interaction.response.send_message('Ahora no tienes las notificaciones activadas.', ephemeral=True)
+        else:
+            await interaction.user.add_roles(rol)
+            await interaction.response.send_message('Ahora tienes las notificaciones activadas.', ephemeral=True)
+
+class ServerStatusButtonStop(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Stop", emoji="🔴", custom_id="server_status_button_stop", style=discord.ButtonStyle.red)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("No tienes permisos para usar esta funcion.", ephemeral=True)
+            return
+        status = await utils.PowerServer('stop')
+        if status:
+            await interaction.response.send_message('Servidor Detenido', ephemeral=True)
+        else:
+            await interaction.response.send_message('Error al detener el servidor.', ephemeral=True)
+        print(status)
+
+class ServerStatusButtonStart(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Start", emoji="🟢", custom_id="server_status_button_start", style=discord.ButtonStyle.green)
+
+    async def callback(self, interaction: discord.Interaction):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("No tienes permisos para usar esta funcion.", ephemeral=True)
+            return
+        status = await utils.PowerServer('start')
+        if status:
+            await interaction.response.send_message('Servidor iniciado', ephemeral=True)
+        else:
+            await interaction.response.send_message('Error al iniciar el servidor.', ephemeral=True)
+        print(status)
 
 # ? ------------------------------------ Views de los tickets (DropSelect) ------------------------------------
 
@@ -180,10 +219,26 @@ class REGISTER(discord.ui.View):
             await interaction.response.send_message(embed=em, ephemeral=True)
             self.db.datetime(interaction.user.id, interaction.user.name, EstadosUsuario.EN_LINEA)
 
-# class onStatusServer(CreateEmbed):
-#     def __init__(self):
-#         super().__init__(title='ESTADO DEL SERVIDOR', description='', color=ColorDiscord.GREEN.value)
-#         self.set_thumbnail(url='')
+class StatusServerEmbed:
+    def __init__(self) -> None:
+        self.title = 'ESTADO DEL SERVIDOR'
+        self.thumbnail = 'https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif'
+
+    def onServer(self):
+        embed = CreateEmbed(self.title, 'El servidor se encuentra activo.', color=ColorDiscord.GREEN.value)
+        embed.set_thumbnail(url=self.thumbnail)
+        timestamp = int(datetime.now().timestamp())
+        embed.add_field(name='Estado', value=f'Activo <t:{timestamp}:R>', inline= True)
+        embed.set_footer(text='By Kailand V', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
+        return embed
+
+    def offServer(self):
+        embed = CreateEmbed(self.title, 'El servidor se encuentra inactivo.', color=ColorDiscord.RED.value)
+        embed.set_thumbnail(url=self.thumbnail)
+        timestamp = int(datetime.now().timestamp())
+        embed.add_field('Estado', f'Inactivo <t:{timestamp}:R>', True)
+        embed.set_footer(text='By Kailand V', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
+        return embed
 
 class CreateTicket:
     def __init__(self, interaction: discord.Interaction, user: discord.User, channel_name: str = None):

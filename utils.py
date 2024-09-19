@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 from types_utils import ColorDiscord
 from datetime import datetime
+from config import API_KEY, END_POINT_API
+import requests
 
 async def color_autocomplete(interaction: discord.Interaction, current: str):
     color_names = [color.name.lower() for color in ColorDiscord]
@@ -33,3 +35,32 @@ def datetime_now():
     fecha_formateada = fecha_actual.strftime('%Y-%m-%d')
 
     return fecha_formateada
+
+async def PowerServer(signal: str = 'start'):
+    url = f'{END_POINT_API}power'
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    data = {
+        "signal": signal
+    }
+    try:
+        respense = requests.post(url, headers=headers, json=data)
+        respense.raise_for_status()
+        return respense.json()
+    except requests.exceptions.HTTPError as err:
+        print(err)
+        return False
+    except Exception as e:
+        print(e)
+        return False
+
+async def StatusServer():
+    url = f'{END_POINT_API}resources'
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }

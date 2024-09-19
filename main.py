@@ -41,6 +41,8 @@ datetime_actual = utils.datetime_now()
 
 # ? -------------------------------------- Configuracion de Discord --------------------------------------
 
+# class KailandBot(commands.Bot)
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.messages = True
@@ -196,14 +198,14 @@ async def on_message_delete(message: discord.Message):
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def info(interaction: discord.Interaction):
     # Verificar si el usuario tiene permisos de administrador o gestionar servidor
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     await interaction.response.send_message(f'El bot se llama {bot.user.name} y su ID es {bot.user.id}', ephemeral=True)
 
 @bot.tree.command(name='estadisticas', description='Muestra las estadísticas del los usuarios registrados')
 async def update_state(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     await interaction.response.send_message(f'recopilando estadisticas, por favor espere', ephemeral=True)
@@ -219,7 +221,7 @@ async def update_state(interaction: discord.Interaction):
 @bot.tree.command(name='insertar', description='Inserta un nuevo usuario a la base de datos.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def insertar(interaction: discord.Interaction, usuario: discord.Member):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     # TODO: Guardamos en la base de datos el usuario elegido por el comando
@@ -232,7 +234,7 @@ async def insertar(interaction: discord.Interaction, usuario: discord.Member):
 @bot.tree.command(name='borrar', description='Borra un usuario de la base de datos')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def borrar(interaction: discord.Interaction, usuario: discord.Member):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     # TODO: Eliminamos un usuario elegido de la base de datos
@@ -245,7 +247,7 @@ async def borrar(interaction: discord.Interaction, usuario: discord.Member):
 @bot.tree.command(name='get_users', description='Muestra los usuarios de la base de datos.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def consulta(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     # TODO: Obtenemos todos los usuarios registrados en la base de datos
@@ -270,7 +272,7 @@ async def consulta(interaction: discord.Interaction):
 @bot.tree.command(name='set_register', description='Envía el ui de registro para ingreso de jornada de trabajo.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def set_register(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     embed = discord.Embed(
@@ -288,7 +290,7 @@ async def set_register(interaction: discord.Interaction):
 @app_commands.describe(rol='Rol para registrar el usuario')
 @app_commands.autocomplete(rol=utils.autocomplete_roles)
 async def set_server(interaction: discord.Interaction, rol: str):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     server = interaction.guild
@@ -313,7 +315,7 @@ async def set_server(interaction: discord.Interaction, rol: str):
 @commands.has_permissions(administrator=True, manage_guild=True)
 @app_commands.describe(rol='Debes colocar solo el ID del rol a eliminar')
 async def del_rol(interaction: discord.Interaction, rol: str):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     server = interaction.guild
@@ -331,7 +333,7 @@ async def del_rol(interaction: discord.Interaction, rol: str):
 @bot.tree.command(name='get_roles', description='Obtiene la lista de roles registrados.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def get_roles(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     # TODO: Consultamos los roles de la base de datos.
@@ -344,7 +346,7 @@ async def get_roles(interaction: discord.Interaction):
 @bot.tree.command(name='get_raw', description='Muestra los datos en raw de los usuarios registrados.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def get_raw(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     if len(json.dumps(user_register, ensure_ascii=False, indent=2)) <= 1900:
@@ -355,7 +357,7 @@ async def get_raw(interaction: discord.Interaction):
 @bot.tree.command(name='del_channel', description='Elimina el canal.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def del_channel(interaction: discord.Interaction, channel: discord.TextChannel):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     try:
@@ -369,7 +371,7 @@ async def del_channel(interaction: discord.Interaction, channel: discord.TextCha
 @app_commands.autocomplete(color=utils.color_autocomplete)
 @app_commands.describe(color='Color del Embed', title='Tiulo del Embed', description='Descripción del Embed', description_embed='Descripción del Embed', author='Autor del Embed', channel='Canal donde se enviara el Embed')
 async def create_embed(interaction: discord.Interaction, channel: discord.TextChannel, color: str, title: typing.Optional[str] = None, description: typing.Optional[str] = None, description_embed: typing.Optional[str] = None, author: typing.Optional[discord.Member] = None):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     color_value = ColorDiscord[color.upper()].value
@@ -400,7 +402,7 @@ async def create_embed(interaction: discord.Interaction, channel: discord.TextCh
 @bot.tree.command(name='set_ticket', description='Setea el canal de tickets.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def set_ticket(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     channel = interaction.channel
@@ -416,17 +418,29 @@ async def set_ticket(interaction: discord.Interaction):
 @bot.tree.command(name='create_ticket', description='Crea un ticket personalizado para dar soporte a un usuario en concreto.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 async def set_ticket(interaction: discord.Interaction, user: discord.Member):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     ticket = ui.CreateTicket(interaction, user)
     await ticket.create()
 
+@bot.tree.command(name='set_server', description='Crea el embed para ver el estado del servidor y el cual sera enviado en el canal que ejecutes el comando.')
+@commands.has_permissions(administrator=True, manage_guild=True)
+async def set_ticket(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
+        return
+    tp = ui.StatusServerEmbed()
+    embed = tp.onServer()
+    view = ui.ServerStatusView()
+    await interaction.channel.send(embed=embed, view=view)
+    await interaction.response.send_message('Embed del estado del servidor enviado.', ephemeral=True)
+
 @bot.tree.command(name='ticket_priv', description='Vuelve el ticket privado.')
 @commands.has_permissions(administrator=True, manage_guild=True)
 @commands.has_permissions(manage_channels=True)
 async def ticket_priv(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     channel = interaction.channel
@@ -459,7 +473,7 @@ async def ticket_priv(interaction: discord.Interaction):
 @commands.has_permissions(administrator=True, manage_guild=True)
 @commands.has_permissions(manage_channels=True)
 async def ticket_import(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     channel = interaction.channel
@@ -476,7 +490,7 @@ async def ticket_import(interaction: discord.Interaction):
 @commands.has_permissions(administrator=True, manage_guild=True)
 @commands.has_permissions(manage_channels=True)
 async def ticket_mediun(interaction: discord.Interaction):
-    if not interaction.user.guild_permissions.administrator and not interaction.user.id == ID_DEVELOPER:
+    if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     channel = interaction.channel
@@ -515,6 +529,10 @@ async def event_loop_connection_db():
                     logging.error(f'Error al enviar mensaje privado al usuario {user_id}, error: {e}')
 
         user_online.clear() # Limpiamos la lista de usuarios en jornada
+
+@tasks.loop(seconds=5.0)
+async def event_loop_check_server_status():
+    pass
 
 
 # ? --------------------------- Apartado de conexión del bot ---------------------------
