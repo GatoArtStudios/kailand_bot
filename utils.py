@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from types_utils import ColorDiscord
 from datetime import datetime
-from config import API_KEY, END_POINT_API
+from config import API_KEY, END_POINT_API, END_POINT_API_PLAYERS
 import requests
 
 async def color_autocomplete(interaction: discord.Interaction, current: str):
@@ -58,9 +58,34 @@ async def PowerServer(signal: str = 'start'):
         return False
 
 async def StatusServer():
+    '''
+    Estados:
+    offline,
+    starting,
+    running,
+    stopping
+    '''
     url = f'{END_POINT_API}resources'
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}"
     }
+    try:
+        p = requests.get(url, headers=headers)
+        p.raise_for_status()
+        r = p.json()
+        c = r['attributes']['current_state']
+
+        pl = requests.get(END_POINT_API_PLAYERS)
+        pl.raise_for_status()
+        rl = pl.json()
+        player = rl['players']['online']
+
+        return c, player
+    except requests.exceptions.HTTPError as err:
+        print(err)
+        return False
+    except Exception as e:
+        print(e)
+        return False

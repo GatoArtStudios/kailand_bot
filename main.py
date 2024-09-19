@@ -19,6 +19,7 @@ import typing
 from config import user_ticket, ID_DEVELOPER, ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN, TICKET_CATEGORY_PRIVATE_ID, TICKET_CATEGORY_MEDIUN_ID, TICKET_CATEGORY_IMPORT_ID
 from types_utils import EstadosUsuario, ConverStatus, ColorDiscord
 from log import logging
+from config import CHANNEL_STATUS_ID as channel_status_id, MESSAGE_STATUS_ID as msg_status_id
 
 # ? ------------------------------------ Configuracion de la base de datos ------------------------------------
 
@@ -38,6 +39,12 @@ user_online = {}
 user_register = {}
 user_spam = {}
 datetime_actual = utils.datetime_now()
+channel_status: discord.TextChannel = None
+message_status_embed: discord.Message = None
+embed_status = ui.StatusServerEmbed()
+# Servidor de minecraft
+estado = ''
+timestamp = int(datetime.datetime.now().timestamp())
 
 # ? -------------------------------------- Configuracion de Discord --------------------------------------
 
@@ -64,6 +71,8 @@ async def setup_hook():
 
 @bot.event
 async def on_ready():
+    global message_status_embed, channel_status
+    print('Sincronizando datos del servidor')
     logging.info(f'( {bot.user.name} Se a conectado a Discord!, ID" ({bot.user.id})')
     # Seteamos el estado del bot
     custom_emoji = discord.PartialEmoji(name='😎', animated=False)
@@ -106,9 +115,24 @@ async def on_ready():
                 else:
                     if user[1] in user_online:
                         del user_online[user[1]]
+
+        # Obtenemos el mensaje y lo almacenamos en una variable
+        channel_status = bot.get_channel(channel_status_id)
+        if channel_status is not None:
+            try:
+                message_status_embed = await channel_status.fetch_message(msg_status_id)
+
+                if message_status_embed is None:
+                    print('Error al obtener el mensaje del estado del servidor')
+                else:
+                    print(f'Obteniendo el mensaje de estado del servidor: {message_status_embed.embeds}' )
+            except Exception as e:
+                logging.error(f'Error al obtener el mensaje de estado del servidor: {e}')
+                print(f'Error al obtener el mensaje de estado del servidor: {e}')
     # ? ------------------------------------ Sincronizamos comandos y actualizamos el estado del bot ------------------------------------
         synced = await bot.tree.sync()
         logging.info(f'Sincronizando {len(synced)} commando (s)')
+        print(f'Sincronizando {len(synced)} commando (s)')
     except Exception as e:
         logging.error(f'Tipo de error {e}')
     # Responde al evento colocando el estado de la actividad personalizada
@@ -289,7 +313,7 @@ async def set_register(interaction: discord.Interaction):
 @commands.has_permissions(administrator=True, manage_guild=True)
 @app_commands.describe(rol='Rol para registrar el usuario')
 @app_commands.autocomplete(rol=utils.autocomplete_roles)
-async def set_server(interaction: discord.Interaction, rol: str):
+async def set_rol(interaction: discord.Interaction, rol: str):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
@@ -424,14 +448,14 @@ async def set_ticket(interaction: discord.Interaction, user: discord.Member):
     ticket = ui.CreateTicket(interaction, user)
     await ticket.create()
 
-@bot.tree.command(name='set_server', description='Crea el embed para ver el estado del servidor y el cual sera enviado en el canal que ejecutes el comando.')
+@bot.tree.command(name='set_server', description='Crea el embed para ver el estado del servidor de Minecraft.')
 @commands.has_permissions(administrator=True, manage_guild=True)
-async def set_ticket(interaction: discord.Interaction):
+async def set_server(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     tp = ui.StatusServerEmbed()
-    embed = tp.onServer()
+    embed = tp.onServer(timestamp)
     view = ui.ServerStatusView()
     await interaction.channel.send(embed=embed, view=view)
     await interaction.response.send_message('Embed del estado del servidor enviado.', ephemeral=True)
@@ -532,8 +556,50 @@ async def event_loop_connection_db():
 
 @tasks.loop(seconds=5.0)
 async def event_loop_check_server_status():
-    pass
-
+    global estado, timestamp
+    status, players = await utils.StatusServer()
+    if status == 'offline':
+        if estado != 'Inactivo':
+            timestamp = int(datetime.datetime.now().timestamp())
+            if channel_status is not None:
+                ms = await channel_status.send('@everyone')
+                await ms.delete()
+        estado = 'Inactivo'
+        if message_status_embed is not None:
+            em = embed_status.offServer(timestamp, players)
+            await message_status_embed.edit(embed=em)
+    elif status == 'starting':
+        if estado != 'Iniciando':
+            timestamp = int(datetime.datetime.now().timestamp())
+            if channel_status is not None:
+                ms = await channel_status.send('@everyone')
+                await ms.delete()
+        estado == 'Iniciando'
+        if message_status_embed is not None:
+            em = embed_status.startingServer(timestamp, players)
+            await message_status_embed.edit(embed=em)
+    elif status == 'running':
+        if estado != 'Activo':
+            timestamp = int(datetime.datetime.now().timestamp())
+            if channel_status is not None:
+                ms = await channel_status.send('@everyone')
+                await ms.delete()
+        estado = 'Activo'
+        if message_status_embed is not None:
+            em = embed_status.onServer(timestamp, players)
+            await message_status_embed.edit(embed=em)
+    elif status == 'stopping':
+        if estado != 'Apagando':
+            timestamp = int(datetime.datetime.now().timestamp())
+            if channel_status is not None:
+                ms = await channel_status.send('@everyone')
+                await ms.delete()
+        estado == 'Apagando'
+        if message_status_embed is not None:
+            em = embed_status.stoppingServer(timestamp, players)
+            await message_status_embed.edit(embed=em)
+    # print(estado)
+    # print(channel_status)
 
 # ? --------------------------- Apartado de conexión del bot ---------------------------
 
@@ -551,10 +617,12 @@ async def main():
             try:
                 logging.info("Estableciendo conexión...")
                 event_loop_connection_db.start()
+                event_loop_check_server_status.start()
                 await bot.start(config.TOKEN)
             except (socket.gaierror, aiohttp.client_exceptions.ClientConnectorError, RuntimeError):
                 logging.error("Conexión cerrada por error de red.")
                 event_loop_connection_db.stop()
+                event_loop_check_server_status.stop()
                 await bot.close()
                 break
             except KeyboardInterrupt:

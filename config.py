@@ -25,6 +25,9 @@ TICKET_CATEGORY_IMPORT_ID = int(os.environ.get('TICKET_CATEGORY_IMPORT_ID'))
 ID_ROLE_SERVERSTATUS = int(os.environ.get('ID_ROLE_SERVERSTATUS'))
 API_KEY = os.environ.get('API_KEY')
 END_POINT_API = os.environ.get('END_POINT_API')
+END_POINT_API_PLAYERS = os.environ.get('END_POINT_API_PLAYERS')
+CHANNEL_STATUS_ID = int(os.environ.get('CHANNEL_STATUS_ID'))
+MESSAGE_STATUS_ID = int(os.environ.get('MESSAGE_STATUS_ID'))
 
 # Almacenamos los usaurios que han abierto tickets
 user_ticket = {}

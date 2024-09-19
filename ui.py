@@ -224,19 +224,35 @@ class StatusServerEmbed:
         self.title = 'ESTADO DEL SERVIDOR'
         self.thumbnail = 'https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif'
 
-    def onServer(self):
+    def onServer(self, timestamp: int, players: int = 0 ):
         embed = CreateEmbed(self.title, 'El servidor se encuentra activo.', color=ColorDiscord.GREEN.value)
         embed.set_thumbnail(url=self.thumbnail)
-        timestamp = int(datetime.now().timestamp())
-        embed.add_field(name='Estado', value=f'Activo <t:{timestamp}:R>', inline= True)
+        embed.add_field(name = 'Estado', value=f'Activo <t:{timestamp}:R>', inline = True)
+        embed.add_field(name='Jugadores', value=f'`{players}`', inline = True)
         embed.set_footer(text='By Kailand V', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
         return embed
 
-    def offServer(self):
+    def offServer(self, timestamp: int, players: int = 0 ):
         embed = CreateEmbed(self.title, 'El servidor se encuentra inactivo.', color=ColorDiscord.RED.value)
         embed.set_thumbnail(url=self.thumbnail)
-        timestamp = int(datetime.now().timestamp())
-        embed.add_field('Estado', f'Inactivo <t:{timestamp}:R>', True)
+        embed.add_field(name = 'Estado',value= f'Inactivo <t:{timestamp}:R>',inline = True)
+        embed.add_field(name='Jugadores', value=f'`{players}`', inline = True)
+        embed.set_footer(text='By Kailand V', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
+        return embed
+
+    def startingServer(self, timestamp: int, players: int = 0 ):
+        embed = CreateEmbed(self.title, 'El servidor se encuentra iniciandose.', color=ColorDiscord.YELLOW.value)
+        embed.set_thumbnail(url=self.thumbnail)
+        embed.add_field(name = 'Estado',value = f'Iniciando <t:{timestamp}:R>',inline = True)
+        embed.add_field(name='Jugadores', value=f'`{players}`', inline = True)
+        embed.set_footer(text='By Kailand V', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
+        return embed
+
+    def stoppingServer(self, timestamp: int, players: int = 0 ):
+        embed = CreateEmbed(self.title, 'El servidor se encuentra apagandose.', color=ColorDiscord.ORANGE.value)
+        embed.set_thumbnail(url=self.thumbnail)
+        embed.add_field(name = 'Estado',value= f'Apagandose <t:{timestamp}:R>',inline = True)
+        embed.add_field(name='Jugadores', value=f'`{players}`', inline = True)
         embed.set_footer(text='By Kailand V', icon_url='https://raw.githubusercontent.com/GatoArtStudios/kailand_bot/Gatun/img/KLZ.gif')
         return embed
 
