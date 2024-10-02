@@ -5,7 +5,7 @@ import discord
 from discord.ui import Button, Select, View
 
 import sql
-from config import ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN, ID_ROLE_SERVERSTATUS
+from config import ID_ROLE_HELPER, ID_ROLE_MOD, ID_ROLE_TECN, ID_ROLE_SERVERSTATUS, TICKET_CATEGORY_PRIVATE_ID, TICKET_CATEGORY_MEDIUN_ID, TICKET_CATEGORY_IMPORT_ID, TICKET_CATEGORY_BACKUPS_ID
 from config import PATH as path
 from config import TICKET_CATEGORY_ID, user_ticket
 from types_utils import ColorDiscord, EstadosUsuario
@@ -78,18 +78,22 @@ class TicketSelect(discord.ui.Select):
             discord.SelectOption(label="Soporte Discord", description="Ayuda con problemas con el servidor de discord.", emoji="💬"),
             discord.SelectOption(label="Soporte Launcher", description="Ayuda con problemas con el launcher.", emoji="🖥️"),
             discord.SelectOption(label="Reporte de Bugs", description="Informa sobre un error.", emoji="<:GC_anotao:812543341232259092>"),
+            discord.SelectOption(label="Inscripciones del Paintball", description="Inscribe tu team para participar en el evento de PaintBall", emoji="👥"),
         ]
         super().__init__(placeholder="Elige el tipo de soporte que necesitas.", custom_id="ticket_select_type", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        tipo_soporte = self.values[0].replace('Soporte ', '').replace('Consultas Generales', 'General').replace('Reporte de Bugs', 'Bugs')
+        tipo_soporte = self.values[0].replace('Soporte ', '').replace('Consultas Generales', 'General').replace('Reporte de Bugs', 'Bugs').replace('Inscripciones del Paintball', 'evento')
         user = interaction.user
         guild = interaction.guild
 
         # Creamos el canal para el ticket
         category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
         channel_name = f'{tipo_soporte}-{user.display_name}'.replace(' ', '-').lower()
-        ticket = CreateTicket(interaction, user, channel_name)
+        if tipo_soporte == 'evento':
+            ticket = CreateTicket(interaction, user, channel_name, TICKET_CATEGORY_MEDIUN_ID)
+        else:
+            ticket = CreateTicket(interaction, user, channel_name)
         await ticket.create()
         view_ticket = TicketSelectView()
         await interaction.message.edit(view=view_ticket)
@@ -107,13 +111,41 @@ class TicketCloseButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         ticket_channel = interaction.channel
+        category = interaction.channel.category_id
         if ticket_channel:
                 try:
-                    await interaction.response.send_message('Ticket cerrado.')
-                    await asyncio.sleep(3)
-                    await ticket_channel.delete()
+                    if category in [TICKET_CATEGORY_IMPORT_ID, TICKET_CATEGORY_MEDIUN_ID, TICKET_CATEGORY_PRIVATE_ID]:
+                        if not interaction.user.guild_permissions.administrator:
+                            await interaction.response.send_message("No tiene permiso para cerrar este ticket.", ephemeral=True)
+                            return
+                        await interaction.response.send_message('Ticket cerrado.')
+                        await asyncio.sleep(3)
+                        await self.moveTicketToBackups(interaction)
+                    elif category == TICKET_CATEGORY_ID:
+                        await interaction.response.send_message('Ticket cerrado.')
+                        await asyncio.sleep(3)
+                        await self.moveTicketToBackups(interaction)
+                    else:
+                        await interaction.response.send_message('No tiene permiso para cerrar este ticket.', ephemeral=True)
                 except Exception as e:
                     await interaction.response.send_message(f'Error al cerrar el ticket.', ephemeral=True)
+
+    async def moveTicketToBackups(self, interaction: discord.Interaction):
+        target_category = discord.utils.get(interaction.guild.categories, id=TICKET_CATEGORY_BACKUPS_ID)
+        guild = interaction.guild
+        user = await utils.getUserTicket(interaction)
+        overwrites = {
+            discord.utils.get(guild.roles, id=ID_ROLE_HELPER): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a helpers
+            discord.utils.get(guild.roles, id=ID_ROLE_MOD): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a moderadores
+            discord.utils.get(guild.roles, id=ID_ROLE_TECN): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a tecnicos
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            user: discord.PermissionOverwrite(read_messages=False, send_messages=False, view_channel=False, read_message_history=False, manage_messages=False),
+            guild.me: discord.PermissionOverwrite(read_messages=True)
+        }
+        if not target_category:
+            await interaction.response.send_message('No se encontro la categoria privada.', ephemeral=True)
+            return
+        await interaction.channel.edit(overwrites=overwrites, category=target_category)
 
 # ? ------------------------------------ Clases de los embeds ------------------------------------
 
@@ -257,14 +289,15 @@ class StatusServerEmbed:
         return embed
 
 class CreateTicket:
-    def __init__(self, interaction: discord.Interaction, user: discord.User, channel_name: str = None):
+    def __init__(self, interaction: discord.Interaction, user: discord.User, channel_name: str = None, category_id: int = TICKET_CATEGORY_ID):
         self.interaction = interaction
         self.user = user
         self.channel_name = channel_name if channel_name else f'ticket-{user.display_name}'
+        self.category_id = category_id
     async def create(self):
         guild = self.interaction.guild
 
-        category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
+        category = discord.utils.get(guild.categories, id=self.category_id)
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             self.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),

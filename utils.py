@@ -89,3 +89,9 @@ async def StatusServer():
     except Exception as e:
         print(e)
         return False
+
+async def getUserTicket(interaction: discord.Interaction):
+    guild = interaction.guild
+    user_name = interaction.channel.name.replace('evento-', '').replace('discord-', ' ').replace('minecraft-', '').replace('launcher-', '').replace('bugs-', '')
+    user = discord.utils.get(guild.members, name=user_name)
+    return user

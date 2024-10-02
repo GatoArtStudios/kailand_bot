@@ -468,10 +468,8 @@ async def ticket_priv(interaction: discord.Interaction):
         await interaction.response.send_message("No tienes permisos para usar este comando.", ephemeral=True)
         return
     channel = interaction.channel
-    print(f'Canal Actual: {channel.id}, Usuarios de ticket: {user_ticket}')
     try:
-        user_id = user_ticket[channel.id] # ID del usuario que abrio el ticket
-        user = discord.utils.get(interaction.guild.members, id=user_id)
+        user = await utils.getUserTicket(interaction)
     except Exception as e:
         await interaction.response.send_message('Error al obtener el usuario autor del ticket.', ephemeral=True)
         return
@@ -556,50 +554,47 @@ async def event_loop_connection_db():
 
 @tasks.loop(seconds=5.0)
 async def event_loop_check_server_status():
-    global estado, timestamp
-    status, players = await utils.StatusServer()
-    if status == 'offline':
-        if estado != 'Inactivo':
-            timestamp = int(datetime.datetime.now().timestamp())
-            if channel_status is not None:
-                ms = await channel_status.send('@everyone')
-                await ms.delete()
-        estado = 'Inactivo'
-        if message_status_embed is not None:
-            em = embed_status.offServer(timestamp, players)
-            await message_status_embed.edit(embed=em)
-    elif status == 'starting':
-        if estado != 'Iniciando':
-            timestamp = int(datetime.datetime.now().timestamp())
-            if channel_status is not None:
-                ms = await channel_status.send('@everyone')
-                await ms.delete()
-        estado == 'Iniciando'
-        if message_status_embed is not None:
-            em = embed_status.startingServer(timestamp, players)
-            await message_status_embed.edit(embed=em)
-    elif status == 'running':
-        if estado != 'Activo':
-            timestamp = int(datetime.datetime.now().timestamp())
-            if channel_status is not None:
-                ms = await channel_status.send('@everyone')
-                await ms.delete()
-        estado = 'Activo'
-        if message_status_embed is not None:
-            em = embed_status.onServer(timestamp, players)
-            await message_status_embed.edit(embed=em)
-    elif status == 'stopping':
-        if estado != 'Apagando':
-            timestamp = int(datetime.datetime.now().timestamp())
-            if channel_status is not None:
-                ms = await channel_status.send('@everyone')
-                await ms.delete()
-        estado == 'Apagando'
-        if message_status_embed is not None:
-            em = embed_status.stoppingServer(timestamp, players)
-            await message_status_embed.edit(embed=em)
-    # print(estado)
-    # print(channel_status)
+    try:
+        global estado, timestamp
+        status, players = await utils.StatusServer()
+        if status == 'offline':
+            if estado != 'Inactivo':
+                timestamp = int(datetime.datetime.now().timestamp())
+                if channel_status is not None:
+                    ms = await channel_status.send('<@&1283242933298004091>')
+                    await ms.delete()
+            estado = 'Inactivo'
+            if message_status_embed is not None:
+                em = embed_status.offServer(timestamp, players)
+                await message_status_embed.edit(embed=em)
+        elif status == 'starting':
+            if estado != 'Iniciando':
+                timestamp = int(datetime.datetime.now().timestamp())
+            estado == 'Iniciando'
+            if message_status_embed is not None:
+                em = embed_status.startingServer(timestamp, players)
+                await message_status_embed.edit(embed=em)
+        elif status == 'running':
+            if estado != 'Activo':
+                timestamp = int(datetime.datetime.now().timestamp())
+                if channel_status is not None:
+                    ms = await channel_status.send('<@&1283242933298004091>')
+                    await ms.delete()
+            estado = 'Activo'
+            if message_status_embed is not None:
+                em = embed_status.onServer(timestamp, players)
+                await message_status_embed.edit(embed=em)
+        elif status == 'stopping':
+            if estado != 'Apagando':
+                timestamp = int(datetime.datetime.now().timestamp())
+            estado == 'Apagando'
+            if message_status_embed is not None:
+                em = embed_status.stoppingServer(timestamp, players)
+                await message_status_embed.edit(embed=em)
+        # print(estado)
+        # print(channel_status)
+    except Exception as e:
+        print(e)
 
 # ? --------------------------- Apartado de conexión del bot ---------------------------
 
