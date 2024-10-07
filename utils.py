@@ -92,6 +92,8 @@ async def StatusServer():
 
 async def getUserTicket(interaction: discord.Interaction):
     guild = interaction.guild
-    user_name = interaction.channel.name.replace('evento-', '').replace('discord-', ' ').replace('minecraft-', '').replace('launcher-', '').replace('bugs-', '')
-    user = discord.utils.get(guild.members, name=user_name)
+    user_name = interaction.channel.name.replace('evento-', '').replace('discord-', '').replace('minecraft-', '').replace('launcher-', '').replace('bugs-', '')
+    user = discord.utils.find(lambda m: m.display_name.lower() == user_name, guild.members)
+    if user is None:
+        user = discord.utils.get(guild.members, name=user_name)
     return user

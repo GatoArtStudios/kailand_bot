@@ -488,7 +488,7 @@ async def ticket_priv(interaction: discord.Interaction):
         await interaction.response.send_message('No se encontro la categoria privada.', ephemeral=True)
         return
     # Mover el canal
-    await channel.edit(category=target_category, overwrites=overwrites)
+    await channel.edit(category=target_category, overwrites=overwrites, reason="Ticket Movido a privado")
     await interaction.response.send_message('Ticket movido a la categoria privada.', ephemeral=True)
 
 @bot.tree.command(name='ticket_import', description='Vuelve el ticket importante.')
@@ -505,7 +505,7 @@ async def ticket_import(interaction: discord.Interaction):
         await interaction.response.send_message('No se encontro la categoria impontante.', ephemeral=True)
         return
     # Mover el canal
-    await channel.edit(category=target_category)
+    await channel.edit(category=target_category, reason="Ticket Movido a importante")
     await interaction.response.send_message('Ticket movido a la categoria de importante.', ephemeral=True)
 
 @bot.tree.command(name='ticket_mediun', description='Vuelve el ticket de importancia media.')
@@ -522,7 +522,7 @@ async def ticket_mediun(interaction: discord.Interaction):
         await interaction.response.send_message('No se encontro la categoria importancia media.', ephemeral=True)
         return
     # Mover el canal
-    await channel.edit(category=target_category)
+    await channel.edit(category=target_category, reason="Ticket Movido a importancia media")
     await interaction.response.send_message('Ticket movido a la categoria de importancia media.', ephemeral=True)
 
 # ? --------------------------- De eventos loops ---------------------------

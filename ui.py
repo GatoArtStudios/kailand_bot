@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import traceback
 
 import discord
 from discord.ui import Button, Select, View
@@ -89,7 +90,7 @@ class TicketSelect(discord.ui.Select):
 
         # Creamos el canal para el ticket
         category = discord.utils.get(guild.categories, id=TICKET_CATEGORY_ID)
-        channel_name = f'{tipo_soporte}-{user.display_name}'.replace(' ', '-').lower()
+        channel_name = f'{tipo_soporte}-{user.name}'.replace(' ', '-').lower()
         if tipo_soporte == 'evento':
             ticket = CreateTicket(interaction, user, channel_name, TICKET_CATEGORY_MEDIUN_ID)
         else:
@@ -118,16 +119,21 @@ class TicketCloseButton(discord.ui.Button):
                         if not interaction.user.guild_permissions.administrator:
                             await interaction.response.send_message("No tiene permiso para cerrar este ticket.", ephemeral=True)
                             return
-                        await interaction.response.send_message('Ticket cerrado.')
-                        await asyncio.sleep(3)
                         await self.moveTicketToBackups(interaction)
+                        if not interaction.response.is_done():
+                            await interaction.response.send_message('Ticket cerrado.')
+                        else:
+                            await interaction.followup.send('Ticket cerrado.')
                     elif category == TICKET_CATEGORY_ID:
-                        await interaction.response.send_message('Ticket cerrado.')
-                        await asyncio.sleep(3)
                         await self.moveTicketToBackups(interaction)
+                        if not interaction.response.is_done():
+                            await interaction.response.send_message('Ticket cerrado.')
+                        else:
+                            await interaction.followup.send('Ticket cerrado.')
                     else:
                         await interaction.response.send_message('No tiene permiso para cerrar este ticket.', ephemeral=True)
                 except Exception as e:
+                    error_details = traceback.format_exc()
                     await interaction.response.send_message(f'Error al cerrar el ticket.', ephemeral=True)
 
     async def moveTicketToBackups(self, interaction: discord.Interaction):
@@ -139,13 +145,15 @@ class TicketCloseButton(discord.ui.Button):
             discord.utils.get(guild.roles, id=ID_ROLE_MOD): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a moderadores
             discord.utils.get(guild.roles, id=ID_ROLE_TECN): discord.PermissionOverwrite(read_messages=False), # Le quita permisos de leer mensajes a tecnicos
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            user: discord.PermissionOverwrite(read_messages=False, send_messages=False, view_channel=False, read_message_history=False, manage_messages=False),
             guild.me: discord.PermissionOverwrite(read_messages=True)
         }
+        if user:
+            overwrites[user] = discord.PermissionOverwrite(read_messages=False, send_messages=False, view_channel=False, read_message_history=False, manage_messages=False)
+
         if not target_category:
-            await interaction.response.send_message('No se encontro la categoria privada.', ephemeral=True)
+            await interaction.response.send_message('No se encontro la categoria backups.', ephemeral=True)
             return
-        await interaction.channel.edit(overwrites=overwrites, category=target_category)
+        await interaction.channel.edit(overwrites=overwrites, category=target_category, reason="Ticket cerrado.", sync_permissions=True)
 
 # ? ------------------------------------ Clases de los embeds ------------------------------------
 
@@ -292,7 +300,7 @@ class CreateTicket:
     def __init__(self, interaction: discord.Interaction, user: discord.User, channel_name: str = None, category_id: int = TICKET_CATEGORY_ID):
         self.interaction = interaction
         self.user = user
-        self.channel_name = channel_name if channel_name else f'ticket-{user.display_name}'
+        self.channel_name = channel_name if channel_name else f'ticket-{user.name}'
         self.category_id = category_id
     async def create(self):
         guild = self.interaction.guild
@@ -310,8 +318,11 @@ class CreateTicket:
 
         await self.interaction.response.send_message(f'Ticket creado en {ticket_channel.mention}.', ephemeral=True)
 
+        type_ticket = ticket_channel.name.split('-')[0]
+        if type_ticket == 'ticket':
+            type_ticket = 'personalizado'
         embed_ticket = CreateEmbed(
-            f'Ticket de soporte personalizado',
+            f'Ticket de soporte para {type_ticket}',
             f'Bienvenido, {self.user.mention}.\nUn miembro del equipo de soporte te atenderá lo más rápido que puedan en el canal de tickets que acabas de crear.',
             color=ColorDiscord.GREEN.value
         )
