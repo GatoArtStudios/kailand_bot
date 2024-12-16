@@ -534,6 +534,9 @@ async def event_loop_connection_db():
     Esta funcion se encargara de terminar la jornada laboral de un usuario si no lo hizo de forma manual.
     '''
 
+    # evitamos la ejecion con un return
+    return True
+
     current_time = datetime.datetime.now()
     if current_time.hour == 0 and current_time.minute == 0:
         print('Es medianoche, reseteando user_online')
@@ -554,6 +557,8 @@ async def event_loop_connection_db():
 
 @tasks.loop(seconds=5.0)
 async def event_loop_check_server_status():
+    # evitamos la ejecion con un return
+    return True
     try:
         global estado, timestamp
         status, players = await utils.StatusServer()
